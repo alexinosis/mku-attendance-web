@@ -1,6 +1,6 @@
 {
   "build": {
-    "builder": "MAVEN",
-    "buildCommand": "mvn -DoutputFile=target/mvn-dependency-list.log -B -DskipTests clean dependency:list install"
+    "builder": "maven",
+    "buildCommand": "mvn -B -DskipTests clean package"
   }
 }
