@@ -1,6 +1,0 @@
-{
-  "build": {
-    "builder": "maven",
-    "buildCommand": "mvn -B -DskipTests clean package"
-  }
-}
