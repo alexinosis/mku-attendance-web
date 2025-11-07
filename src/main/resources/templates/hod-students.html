@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>View Students - HOD Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        header { background: #FF8C00; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .filter-section { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .filter-row { display: flex; gap: 15px; align-items: end; flex-wrap: wrap; }
+        .filter-group { flex: 1; min-width: 200px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #FF8C00; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-secondary { background: #6c757d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #FF8C00; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .summary { background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>MKU Attendance System - View Students</h1>
+        <p>Welcome, <strong th:text="${hod.name}">HOD</strong></p>
+    </header>
+
+    <a th:href="@{/hod/dashboard(hodId=${hod.id})}" class="back-link">← Back to Dashboard</a>
+
+    <div class="summary">
+        <h3>Student Summary</h3>
+        <p>Total Students: <strong th:text="${totalStudents}">0</strong> |
+            Showing: <strong th:text="${filteredCount}">0</strong> |
+            <span th:if="${filterType != null and filterValue != null and !filterValue.isEmpty()}">Filtered by: <strong th:text="${filterType}"></strong> = "<strong th:text="${filterValue}"></strong>"</span>
+            <span th:if="${filterType == null or filterValue == null or filterValue.isEmpty()}">Showing all students</span>
+        </p>
+    </div>
+
+    <div class="filter-section">
+        <h2>Filter Students</h2>
+        <form th:action="@{/hod/students}" method="get">
+            <input type="hidden" name="hodId" th:value="${hod.id}">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Filter By</label>
+                    <select name="filterType">
+                        <option value="">-- Select Filter --</option>
+                        <option value="admNo" th:selected="${filterType == 'admNo'}">Admission Number</option>
+                        <option value="name" th:selected="${filterType == 'name'}">Student Name</option>
+                        <option value="course" th:selected="${filterType == 'course'}">Course</option>
+                        <option value="unit" th:selected="${filterType == 'unit'}">Unit</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search Value</label>
+                    <input type="text" name="filterValue" th:value="${filterValue}" placeholder="Enter search term...">
+                </div>
+                <div class="filter-group">
+                    <button type="submit" class="btn-secondary">Apply Filter</button>
+                    <a th:href="@{/hod/students(hodId=${hod.id})}" class="btn-secondary" style="display: inline-block; padding: 10px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div th:if="${students != null and !students.empty}">
+        <table>
+            <thead>
+            <tr>
+                <th>Admission No</th>
+                <th>Name</th>
+                <th>Course</th>
+                <th>Registered Units</th>
+                <th>Email</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="student : ${students}">
+                <td th:text="${student.studentId}"></td>
+                <td th:text="${student.name}"></td>
+                <td th:text="${student.course}"></td>
+                <td>
+                        <span th:if="${student.registeredUnits != null and student.registeredUnits.size() > 0}">
+                            <span th:each="unit, stat : ${student.registeredUnits}">
+                                <span th:text="${unit}"></span><span th:if="${!stat.last}">, </span>
+                            </span>
+                            <br><small>(<span th:text="${student.registeredUnits.size()}"></span> units)</small>
+                        </span>
+                    <span th:if="${student.registeredUnits == null or student.registeredUnits.size() == 0}">
+                            <em>No units registered</em>
+                        </span>
+                </td>
+                <td th:text="${student.email}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:if="${students == null or students.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+        <h3>No students found</h3>
+        <p th:if="${filterType != null and filterValue != null and !filterValue.isEmpty()}">No students match your filter criteria. Try a different search term.</p>
+        <p th:if="${filterType == null or filterValue == null or filterValue.isEmpty()}">No students are currently registered in the system.</p>
+    </div>
+</div>
+</body>
+</html>

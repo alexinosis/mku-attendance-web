@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lecturer Dashboard - MKU</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 20px; }
+
+        /* Header */
+        header { background: #2C3E50; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 28px; margin-bottom: 10px; }
+
+        /* Messages */
+        .msg { padding: 12px; margin: 15px 0; border-radius: 5px; font-weight: bold; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Attendance Control */
+        .attendance-control { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 4px solid #2C3E50; }
+        .attendance-control .card-header { background: #2C3E50; color: white; padding: 15px; border-radius: 5px; margin: -20px -20px 20px -20px; }
+        .attendance-status { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .badge { padding: 8px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .bg-success { background: #28a745; }
+        .bg-secondary { background: #6c757d; }
+        .bg-warning { background: #ffc107; color: #212529; }
+        .attendance-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .btn-success:hover { background: #218838; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-info:hover { background: #138496; }
+        .btn:disabled { background: #6c757d; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* Tabs */
+        .tab-nav { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-nav button {
+            padding: 12px 20px;
+            background: #2C3E50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .tab-nav button:hover {
+            background: #34495E;
+            transform: translateY(-2px);
+        }
+        .tab-nav button.active {
+            background: #E74C3C;
+            color: white;
+            box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+        }
+
+        /* Tab Content */
+        .tab { display: none; padding: 25px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .tab.active { display: block; }
+
+        /* Cards and Forms */
+        .card { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #2C3E50; }
+        .card h3 { color: #2C3E50; margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #495057; }
+        select, input, button, textarea { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 14px; }
+        button { background: #2C3E50; color: white; border: none; cursor: pointer; font-weight: bold; transition: background 0.3s; margin-top: 10px; }
+        button:hover { background: #34495E; }
+        button.approve-btn { background: #27ae60; width: auto; padding: 8px 15px; }
+        button.approve-btn:hover { background: #219653; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #2C3E50; color: white; font-weight: bold; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        tr:hover { background: #e9ecef; }
+
+        /* Filter Section */
+        .filter-section { background: #ecf0f1; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .filter-row { display: flex; gap: 15px; align-items: end; flex-wrap: wrap; }
+        .filter-group { flex: 1; min-width: 200px; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-top: 4px solid #2C3E50; }
+        .stat-number { font-size: 24px; font-weight: bold; color: #2C3E50; margin-bottom: 5px; }
+        .stat-label { color: #6c757d; font-size: 14px; }
+
+        /* Logout */
+        .logout { text-align: center; margin-top: 30px; padding: 20px; background: white; border-radius: 10px; }
+        .logout a { color: #2C3E50; text-decoration: none; font-weight: bold; margin: 0 10px; }
+        .logout a:hover { text-decoration: underline; }
+
+        /* Progress Bars */
+        .progress-container { background: #e9ecef; border-radius: 10px; height: 10px; overflow: hidden; margin: 5px 0; }
+        .progress-bar { height: 100%; border-radius: 10px; transition: width 0.3s; }
+
+        /* Attendance status badges */
+        .status-pending { background: #f39c12; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; }
+        .status-approved { background: #27ae60; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; }
+        .status-present { background: #27ae60; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; }
+        .status-absent { background: #e74c3c; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; }
+
+        /* Student attendance tick */
+        .attendance-tick { text-align: center; }
+        .tick-box {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+        .tick-box.active {
+            opacity: 1;
+            cursor: pointer;
+        }
+        .tick-box.marked {
+            color: #27ae60;
+            opacity: 1;
+        }
+        .tick-box:disabled {
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .tab-nav { flex-direction: column; }
+            .tab-nav button { width: 100%; }
+            .filter-row { flex-direction: column; }
+            .attendance-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- HEADER -->
+    <header>
+        <h1>MKU Lecturer Portal</h1>
+        <p>Welcome, <strong th:text="${lecturer.name}">Lecturer Name</strong> |
+            Unit: <span th:text="${lecturer.unitCode}"></span> |
+            Course: <span th:text="${lecturer.courseCode}"></span></p>
+    </header>
+
+    <!-- MESSAGES -->
+    <div th:if="${success}" class="msg success" th:text="${success}"></div>
+    <div th:if="${error}" class="msg error" th:text="${error}"></div>
+
+    <!-- ATTENDANCE CONTROL SECTION -->
+    <div class="attendance-control">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-clock me-2"></i>Attendance Control - <span th:text="${lecturer.unitCode}"></span>
+            </h5>
+        </div>
+        <div class="attendance-status">
+            <div th:if="${isAttendanceActive}">
+                <span class="badge bg-success">
+                    <i class="fas fa-play-circle me-1"></i>Attendance Active - Students can mark
+                </span>
+                <span id="remainingTime" class="badge bg-warning">
+                    <i class="fas fa-hourglass-half me-1"></i>Time left: <span id="timeDisplay">--:--</span>
+                </span>
+            </div>
+            <div th:unless="${isAttendanceActive}">
+                <span class="badge bg-secondary">
+                    <i class="fas fa-stop-circle me-1"></i>Attendance Not Active
+                </span>
+            </div>
+        </div>
+
+        <div class="attendance-buttons">
+            <form th:action="@{/lecturer/start-attendance}" method="post" th:if="${!isAttendanceActive}">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-play me-1"></i>Start Attendance (60 min)
+                </button>
+            </form>
+
+            <form th:action="@{/lecturer/stop-attendance}" method="post" th:if="${isAttendanceActive}">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-stop me-1"></i>Stop Attendance & Auto-Mark Absent
+                </button>
+            </form>
+
+            <a th:href="@{/lecturer/reports}" class="btn btn-warning">
+                <i class="fas fa-chart-bar me-1"></i>View Attendance Report
+            </a>
+
+            <a th:href="@{/lecturer/view-attendance}" class="btn btn-info">
+                <i class="fas fa-list me-1"></i>View Attendance Records
+            </a>
+        </div>
+
+        <div th:if="${isAttendanceActive}" style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 5px;">
+            <small>
+                <i class="fas fa-info-circle me-1"></i>
+                <strong>Active Session:</strong> Students can now mark attendance by ticking the box.
+                When you stop attendance, students who didn't tick will be automatically marked as absent.
+            </small>
+        </div>
+    </div>
+
+    <!-- TAB NAVIGATION -->
+    <div class="tab-nav">
+        <button class="active" onclick="showTab('take-attendance')">Take Attendance</button>
+        <button onclick="showTab('view-reports')">View Reports</button>
+        <button onclick="showTab('view-attendance-records')">Attendance Records</button>
+        <button onclick="showTab('unit-students')">Unit Students</button>
+    </div>
+
+    <!-- TAKE ATTENDANCE TAB -->
+    <div id="take-attendance" class="tab active">
+        <div class="card">
+            <h3>Take Attendance - <span th:text="${lecturer.unitCode}"></span></h3>
+            <p>Monitor and manage student attendance in real-time.</p>
+
+            <div th:if="${unitStudents != null and !unitStudents.empty}">
+                <!-- Today's attendance summary -->
+                <div th:if="${todaysAttendance != null}" style="margin-bottom: 20px;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${presentToday ?: 0}">0</div>
+                            <div class="stat-label">Present Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${totalStudents - presentToday}">0</div>
+                            <div class="stat-label">Absent Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${totalStudents}">0</div>
+                            <div class="stat-label">Total Students</div>
+                        </div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Course</th>
+                        <th>Today's Status</th>
+                        <th>Mark Attendance</th>
+                        <th>Last Updated</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="student : ${unitStudents}">
+                        <td th:text="${student.studentId}"></td>
+                        <td th:text="${student.firstName + ' ' + student.lastName}">Student Name</td>
+                        <td th:text="${student.course}"></td>
+                        <td>
+                            <span th:if="${todaysAttendance != null}">
+                                <!-- FIXED: Simplified approach without complex SpEL filtering -->
+                                <span th:each="record : ${todaysAttendance}">
+                                    <span th:if="${record.studentId == student.studentId}">
+                                        <span th:if="${record.status == 'PRESENT'}" class="status-present">PRESENT</span>
+                                        <span th:if="${record.status == 'ABSENT'}" class="status-absent">ABSENT</span>
+                                    </span>
+                                </span>
+                                <!-- FIXED: Check if student has attendance using a variable -->
+                                <span th:if="${!#lists.contains(todaysAttendance.![studentId], student.studentId)}" class="status-pending">
+                                    NOT MARKED
+                                </span>
+                            </span>
+                            <span th:if="${todaysAttendance == null}" class="status-pending">
+                                NOT MARKED
+                            </span>
+                        </td>
+                        <td class="attendance-tick">
+                            <i class="fas fa-user-check" style="color: #6c757d;"></i>
+                            <small>Student marks from their panel</small>
+                        </td>
+                        <td>
+                            <span th:if="${todaysAttendance != null}">
+                                <!-- FIXED: Simplified approach -->
+                                <span th:each="record : ${todaysAttendance}">
+                                    <span th:if="${record.studentId == student.studentId}">
+                                        <small th:text="${#strings.substring(record.date, 11, 16)}">--:--</small>
+                                    </span>
+                                </span>
+                                <!-- FIXED: Check if student has attendance using a variable -->
+                                <span th:if="${!#lists.contains(todaysAttendance.![studentId], student.studentId)}">
+                                    <small style="color: #999;">--:--</small>
+                                </span>
+                            </span>
+                            <span th:if="${todaysAttendance == null}">
+                                <small style="color: #999;">--:--</small>
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                    <h5><i class="fas fa-info-circle me-2"></i>How it works:</h5>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>Click "Start Attendance" to allow students to mark attendance</li>
+                        <li>Students will see an enabled tick box in their dashboard</li>
+                        <li>Click "Stop Attendance" to automatically mark absent students</li>
+                        <li>Students who ticked will be marked PRESENT, others ABSENT</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div th:if="${unitStudents == null or unitStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                <p>No students registered for this unit yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW REPORTS TAB -->
+    <div id="view-reports" class="tab">
+        <div class="card">
+            <h3>Attendance Reports - <span th:text="${lecturer.unitCode}"></span></h3>
+            <p>View and filter attendance reports for your unit.</p>
+
+            <!-- Overall Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" th:text="${totalRecords ?: 0}">0</div>
+                    <div class="stat-label">Total Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;" th:text="${presentCount ?: 0}">0</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #e74c3c;" th:text="${absentCount ?: 0}">0</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-card">
+                    <!-- FIXED: Proper numeric comparison with Double attendanceRate -->
+                    <div class="stat-number"
+                         th:style="${(attendanceRate ?: 0) >= 75} ? 'color: #27ae60;' : ((${(attendanceRate ?: 0) >= 50}) ? 'color: #f39c12;' : 'color: #e74c3c;')"
+                         th:text="${#numbers.formatDecimal(attendanceRate ?: 0, 1, 1)} + '%'">0%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <h4>Filter Reports</h4>
+                <form th:action="@{/lecturer/reports}" method="get">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="admissionNo">Admission Number:</label>
+                            <input type="text" id="admissionNo" name="admissionNo"
+                                   th:value="${admissionNoFilter}" placeholder="Enter admission number">
+                        </div>
+                        <div class="filter-group">
+                            <label for="studentName">Student Name:</label>
+                            <input type="text" id="studentName" name="studentName"
+                                   th:value="${studentNameFilter}" placeholder="Enter student name">
+                        </div>
+                        <div class="filter-group">
+                            <button type="submit" style="margin-top: 0;">Apply Filters</button>
+                            <a th:href="@{/lecturer/reports}"
+                               style="display: block; text-align: center; padding: 10px; background: #95a5a6; color: white; text-decoration: none; border-radius: 5px; margin-top: 5px;">
+                                Clear Filters
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Reports Table -->
+            <div th:if="${filteredStudents != null and !filteredStudents.empty}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Course</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="student : ${filteredStudents}">
+                        <td th:text="${student.studentId}"></td>
+                        <td th:text="${student.firstName + ' ' + student.lastName}"></td>
+                        <td th:text="${student.course}"></td>
+                        <td>
+                            <span class="status-approved">Registered</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${filteredStudents == null or filteredStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                <p th:if="${admissionNoFilter != null or studentNameFilter != null}">
+                    No students found matching your filters.
+                </p>
+                <p th:unless="${admissionNoFilter != null or studentNameFilter != null}">
+                    No students registered for this unit yet.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW ATTENDANCE RECORDS TAB -->
+    <div id="view-attendance-records" class="tab">
+        <div class="card">
+            <h3>Attendance Records - <span th:text="${lecturer.unitCode}"></span></h3>
+            <p>Detailed attendance records for all students.</p>
+
+            <div th:if="${attendanceRecords != null and !attendanceRecords.empty}">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${attendanceRecords.size()}">0</div>
+                        <div class="stat-label">Total Records</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: #27ae60;"
+                             th:text="${#lists.size(attendanceRecords.?[status == 'PRESENT'])}">0</div>
+                        <div class="stat-label">Present Records</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: #e74c3c;"
+                             th:text="${#lists.size(attendanceRecords.?[status == 'ABSENT'])}">0</div>
+                        <div class="stat-label">Absent Records</div>
+                    </div>
+                </div>
+
+                <table style="margin-top: 20px;">
+                    <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="record : ${attendanceRecords}">
+                        <td th:text="${record.date}"></td>
+                        <td th:text="${record.studentId}"></td>
+                        <td>
+                            <span th:text="${record.studentName}">Student Name</span>
+                        </td>
+                        <td>
+                            <span th:if="${record.status == 'PRESENT'}" class="status-present">PRESENT</span>
+                            <span th:if="${record.status == 'ABSENT'}" class="status-absent">ABSENT</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${attendanceRecords == null or attendanceRecords.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                <p>No attendance records found for this unit.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- UNIT STUDENTS TAB -->
+    <div id="unit-students" class="tab">
+        <div class="card">
+            <h3>Students in <span th:text="${lecturer.unitCode}"></span></h3>
+            <p>List of all students registered for your unit.</p>
+
+            <div th:if="${unitStudents != null and !unitStudents.empty}">
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${unitStudents.size()}">0</div>
+                        <div class="stat-label">Total Students</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${unitStudents.size()}">0</div>
+                        <div class="stat-label">Registered</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${presentToday ?: 0}">0</div>
+                        <div class="stat-label">With Attendance Today</div>
+                    </div>
+                </div>
+
+                <!-- Students Table -->
+                <table style="margin-top: 20px;">
+                    <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Course</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="student : ${unitStudents}">
+                        <td th:text="${student.studentId}"></td>
+                        <td th:text="${student.firstName + ' ' + student.lastName}"></td>
+                        <td th:text="${student.email}"></td>
+                        <td th:text="${student.course}"></td>
+                        <td>
+                            <span class="status-approved">Registered</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${unitStudents == null or unitStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                <p>No students registered for this unit yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGOUT -->
+    <div class="logout">
+        <a href="/">Back to Home</a> |
+        <a th:href="@{/lecturer/logout}">Logout</a>
+    </div>
+</div>
+
+<script>
+    // Tab navigation
+    function showTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-nav button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab and activate button
+        document.getElementById(tabName).classList.add('active');
+        document.querySelector(`.tab-nav button[onclick="showTab('${tabName}')"]`).classList.add('active');
+    }
+
+    // Auto-show reports tab if flag is set
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Lecturer dashboard loaded successfully');
+
+        // Check if we should show a specific tab
+        if (window.location.hash) {
+            const tabName = window.location.hash.substring(1);
+            if (document.getElementById(tabName)) {
+                showTab(tabName);
+            }
+        }
+
+        // Start auto-refresh for attendance status
+        refreshAttendanceStatus();
+    });
+
+    // Export to PDF function (placeholder)
+    function exportToPDF() {
+        alert('PDF export functionality would be implemented here. This would generate a detailed attendance report.');
+    }
+
+    // Auto-refresh attendance status and update timer
+    function refreshAttendanceStatus() {
+        fetch('/lecturer/attendance-status')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.active) {
+                    console.log('Attendance is active for unit:', data.unitCode);
+                    // Auto-refresh the page if attendance is active for real-time updates
+                    setTimeout(() => {
+                        if (data.active) {
+                            window.location.reload();
+                        }
+                    }, 30000); // Refresh every 30 seconds when active
+                }
+            })
+            .catch(error => console.error('Error refreshing status:', error));
+    }
+
+    // Manual refresh function
+    function refreshNow() {
+        window.location.reload();
+    }
+
+    // Show loading state for forms
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                const submitButton = this.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    const originalText = submitButton.innerHTML;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                    submitButton.disabled = true;
+
+                    // Revert after 5 seconds if still on same page
+                    setTimeout(() => {
+                        if (submitButton.disabled) {
+                            submitButton.innerHTML = originalText;
+                            submitButton.disabled = false;
+                        }
+                    }, 5000);
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

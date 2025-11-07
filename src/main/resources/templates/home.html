@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MKU Attendance System</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;                           /* remove 40px margin so image fits edge-to-edge */
+            padding: 0;
+            background: url('/images/mku.png') no-repeat center center fixed;
+            background-size: cover;             /* resize to fill entire page */
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;                  /* keep spacing inside instead */
+            text-align: center;
+            background: rgba(255,255,255,0.2);  /* optional: slight fade so text is readable */
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 40px;
+            background: rgba(255,255,255,0.6);  /* keeps title readable */
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .btn {
+            display: block;
+            width: 300px;
+            margin: 15px auto;
+            padding: 15px;
+            text-decoration: none;
+            color: black;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .btn-student-signin { background: #228B22; }
+        .btn-student-login { background: #1E90FF; }
+        .btn-hod-login { background: #FF8C00; }
+        .btn-lecturer-login { background: #9400D3; }
+        .btn-exit { background: #B22222; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>University Attendance System<br>MOUNT KENYA UNIVERSITY</h1>
+
+    <a href="/student/register" class="btn btn-student-signin">Student Sign In</a>
+    <a href="/student/login" class="btn btn-student-login">Student Login</a>
+    <a href="/hod/login" class="btn btn-hod-login">HOD Login</a>
+    <a href="/lecturer/login" class="btn btn-lecturer-login">Lecturer Login</a>
+    <a href="#" class="btn btn-exit">Exit</a>
+</div>
+
+</body>
+</html>

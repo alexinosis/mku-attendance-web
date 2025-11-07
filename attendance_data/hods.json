@@ -1,0 +1,18 @@
+{
+  "HOD001" : {
+    "id" : "HOD001",
+    "name" : "Head of Department",
+    "password" : "hod001",
+    "email" : "hod@mku.ac.ke",
+    "department" : "Computer Science",
+    "courses" : [ ]
+  },
+  "1" : {
+    "id" : "1",
+    "name" : "1",
+    "password" : "1",
+    "email" : "sykesalex264@gmail.com",
+    "department" : "ICT",
+    "courses" : [ ]
+  }
+}

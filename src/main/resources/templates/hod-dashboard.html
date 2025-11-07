@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>HOD Dashboard - MKU</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        header { background: #FF8C00; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 28px; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .card h2 { color: #FF8C00; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        button { background: #FF8C00; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #e07a00; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #545b62; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .msg { padding: 12px; margin: 15px 0; border-radius: 5px; font-weight: bold; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; flex-wrap: wrap; }
+        .stat { text-align: center; padding: 10px; min-width: 120px; }
+        .stat h3 { color: #FF8C00; font-size: 24px; margin-bottom: 5px; }
+        .logout { text-align: center; margin-top: 30px; }
+        .logout a { color: #FF8C00; text-decoration: none; font-weight: bold; }
+        .logout a:hover { text-decoration: underline; }
+        .tab { display: none; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-top: 20px; }
+        .tab.active { display: block; }
+        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-nav button { padding: 10px 15px; background: #eee; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .tab-nav button.active { background: #FF8C00; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .filter-section { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .filter-row { display: flex; gap: 15px; align-items: end; flex-wrap: wrap; }
+        .filter-group { flex: 1; min-width: 200px; }
+        .status-present { color: #28a745; font-weight: bold; }
+        .status-absent { color: #dc3545; font-weight: bold; }
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .filter-row { flex-direction: column; }
+            .filter-group { min-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- HEADER -->
+    <header>
+        <h1>MKU Attendance System</h1>
+        <p>Welcome, <strong th:text="${hodName}">HOD</strong> | HOD ID: <span th:text="${hod.id}"></span></p>
+    </header>
+
+    <!-- MESSAGES -->
+    <div th:if="${param.success}" class="msg success" th:text="${param.success}"></div>
+    <div th:if="${param.error}" class="msg error" th:text="${param.error}"></div>
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat">
+            <h3 th:text="${hodManager != null ? #maps.size(hodManager.getCourseManager().getCourses()) : 0}">0</h3>
+            <p>Courses</p>
+        </div>
+        <div class="stat">
+            <h3 th:text="${hodManager != null ? #maps.size(hodManager.getUnitManager().getUnits()) : 0}">0</h3>
+            <p>Units</p>
+        </div>
+        <div class="stat">
+            <h3 th:text="${hodManager != null ? #maps.size(hodManager.getHODs()) : 1}">1</h3>
+            <p>HODs</p>
+        </div>
+        <div class="stat">
+            <h3 th:text="${studentManager != null ? #maps.size(studentManager.getStudents()) : 0}">0</h3>
+            <p>Students</p>
+        </div>
+        <div class="stat">
+            <h3 th:text="${hodManager != null ? hodManager.getLecturerCount() : 0}">0</h3>
+            <p>Lecturers</p>
+        </div>
+    </div>
+
+    <!-- TAB NAVIGATION -->
+    <div class="tab-nav">
+        <button class="active" onclick="showTab('add-course')">Add Course</button>
+        <button onclick="showTab('add-unit')">Add Unit</button>
+        <button onclick="showTab('add-hod')">Add HOD</button>
+        <button onclick="showTab('add-lecturer')">Add Lecturer</button>
+        <button onclick="showTab('courses')">View Courses</button>
+        <button onclick="showTab('units')">View Units</button>
+        <button onclick="showTab('view-hods')">View HODs</button>
+        <button onclick="showTab('lecturers')">View Lecturers</button>
+        <!-- NEW TABS -->
+        <button onclick="showTab('view-students')">View Students</button>
+        <button onclick="showTab('attendance-reports')">Attendance Reports</button>
+    </div>
+
+    <!-- MAIN DASHBOARD GRID -->
+    <div class="dashboard">
+
+        <!-- ADD COURSE -->
+        <div id="add-course" class="card tab active">
+            <h2>Add New Course</h2>
+            <form th:action="@{/hod/courses}" method="post">
+                <input type="hidden" name="hodId" th:value="${hod.id}">
+                <div class="form-group">
+                    <label>Course Code</label>
+                    <input type="text" name="code" placeholder="e.g., CS" required>
+                </div>
+                <div class="form-group">
+                    <label>Course Name</label>
+                    <input type="text" name="name" placeholder="e.g., Computer Science" required>
+                </div>
+                <button type="submit">Add Course</button>
+            </form>
+        </div>
+
+        <!-- ADD UNIT -->
+        <div id="add-unit" class="card tab">
+            <h2>Add New Unit</h2>
+            <form th:action="@{/hod/units}" method="post">
+                <input type="hidden" name="hodId" th:value="${hod.id}">
+                <div class="form-group">
+                    <label>Unit Code</label>
+                    <input type="text" name="code" placeholder="e.g., CS101" required>
+                </div>
+                <div class="form-group">
+                    <label>Unit Name</label>
+                    <input type="text" name="name" placeholder="e.g., Java Programming" required>
+                </div>
+                <div class="form-group">
+                    <label>Course Code</label>
+                    <select name="courseCode" required></select>
+                </div>
+                <button type="submit">Add Unit</button>
+            </form>
+        </div>
+
+        <!-- ADD HOD -->
+        <div id="add-hod" class="card tab">
+            <h2>Add New HOD</h2>
+            <form th:action="@{/hod/add-hod}" method="post">
+                <input type="hidden" name="hodId" th:value="${hod.id}">
+                <div class="form-group">
+                    <label>HOD ID</label>
+                    <input type="text" name="id" required>
+                </div>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button type="submit">Add HOD</button>
+            </form>
+        </div>
+
+        <!-- ADD LECTURER -->
+        <div id="add-lecturer" class="card tab">
+            <h2>Add Lecturer</h2>
+            <form th:action="@{/hod/lecturers}" method="post">
+                <input type="hidden" name="hodId" th:value="${hod.id}">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Lecturer ID</label>
+                    <input type="text" name="lecturerId" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label>Course Code</label>
+                    <select name="courseCode" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Unit Code</label>
+                    <select name="unitCode" required></select>
+                </div>
+                <button type="submit">Add Lecturer</button>
+            </form>
+        </div>
+
+        <!-- VIEW COURSES TAB -->
+        <div id="courses" class="tab">
+            <h2>View Courses</h2>
+            <button onclick="viewCourses()">Refresh Courses</button>
+        </div>
+
+        <!-- VIEW UNITS TAB -->
+        <div id="units" class="tab">
+            <h2>View Units</h2>
+            <button onclick="viewUnits()">Refresh Units</button>
+        </div>
+
+        <!-- VIEW HODs TAB -->
+        <div id="view-hods" class="tab">
+            <h2>View HODs</h2>
+            <button onclick="viewHODs()">Refresh HODs</button>
+        </div>
+
+        <!-- VIEW LECTURERS TAB -->
+        <div id="lecturers" class="tab">
+            <h2>View Lecturers</h2>
+            <button onclick="viewLecturers()">Refresh Lecturers</button>
+        </div>
+
+        <!-- NEW: VIEW STUDENTS TAB -->
+        <div id="view-students" class="tab">
+            <h2>View All Students</h2>
+            <div class="filter-section">
+                <h3>Filter Students</h3>
+                <form th:action="@{/hod/students}" method="get">
+                    <input type="hidden" name="hodId" th:value="${hod.id}">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Filter By</label>
+                            <select name="filterType">
+                                <option value="admNo">Admission Number</option>
+                                <option value="name">Student Name</option>
+                                <option value="course">Course</option>
+                                <option value="unit">Unit</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Search Value</label>
+                            <input type="text" name="filterValue" placeholder="Enter search term...">
+                        </div>
+                        <div class="filter-group">
+                            <button type="submit" class="btn-secondary">Apply Filter</button>
+                            <a th:href="@{/hod/students(hodId=${hod.id})}" class="btn-secondary" style="display: inline-block; padding: 10px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">Clear</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div th:if="${students}">
+                <p>Showing <strong th:text="${filteredCount}">0</strong> of <strong th:text="${totalStudents}">0</strong> students</p>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Admission No</th>
+                        <th>Name</th>
+                        <th>Course</th>
+                        <th>Registered Units</th>
+                        <th>Email</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="student : ${students}">
+                        <td th:text="${student.studentId}"></td>
+                        <td th:text="${student.name}"></td>
+                        <td th:text="${student.course}"></td>
+                        <td>
+                                <span th:if="${student.registeredUnits != null and student.registeredUnits.size() > 0}">
+                                    <span th:each="unit, stat : ${student.registeredUnits}">
+                                        <span th:text="${unit}"></span><span th:if="${not stat.last}">, </span>
+                                    </span>
+                                </span>
+                            <span th:if="${student.registeredUnits == null or student.registeredUnits.size() == 0}">None</span>
+                        </td>
+                        <td th:text="${student.email}"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- NEW: ATTENDANCE REPORTS TAB -->
+        <div id="attendance-reports" class="tab">
+            <h2>Attendance Reports</h2>
+            <div class="filter-section">
+                <h3>Filter Attendance Records</h3>
+                <form th:action="@{/hod/attendance-report}" method="get">
+                    <input type="hidden" name="hodId" th:value="${hod.id}">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Unit Code</label>
+                            <select name="unitCode">
+                                <option value="">All Units</option>
+                                <option th:each="unit : ${availableUnits}"
+                                        th:value="${unit}"
+                                        th:text="${unit}"
+                                        th:selected="${unitCode == unit}"></option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Date</label>
+                            <input type="date" name="date" th:value="${date}">
+                        </div>
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select name="status">
+                                <option value="ALL">All Status</option>
+                                <option value="PRESENT" th:selected="${status == 'PRESENT'}">Present</option>
+                                <option value="ABSENT" th:selected="${status == 'ABSENT'}">Absent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Student ID</label>
+                            <input type="text" name="studentId" th:value="${studentId}" placeholder="Search by student ID...">
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="submit" class="btn-secondary">Apply Filters</button>
+                        <a th:href="@{/hod/attendance-report(hodId=${hod.id})}" class="btn-secondary" style="display: inline-block; padding: 10px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">Clear Filters</a>
+                        <a th:href="@{/hod/download-attendance-report(hodId=${hod.id}, unitCode=${unitCode}, date=${date}, status=${status}, studentId=${studentId})}"
+                           class="btn-success"
+                           style="display: inline-block; padding: 10px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;">
+                            Download CSV Report
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <div th:if="${attendanceRecords}">
+                <p>Showing <strong th:text="${filteredCount}">0</strong> of <strong th:text="${totalRecords}">0</strong> attendance records</p>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Course</th>
+                        <th>Unit Code</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="record : ${attendanceRecords}">
+                        <td th:text="${record.date}"></td>
+                        <td th:text="${record.time}"></td>
+                        <td th:text="${record.studentId}"></td>
+                        <td th:text="${record.studentName}"></td>
+                        <td th:text="${record.course}"></td>
+                        <td th:text="${record.unitCode}"></td>
+                        <td>
+                            <span th:if="${record.present}" class="status-present">PRESENT</span>
+                            <span th:unless="${record.present}" class="status-absent">ABSENT</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LOGOUT -->
+    <div class="logout">
+        <a href="/">Back to Home</a> |
+        <a href="/hod/login">Logout</a>
+    </div>
+</div>
+
+<!-- JAVASCRIPT -->
+<script th:inline="javascript">
+    // Load courses for dropdowns
+    function loadCourses() {
+        fetch('/hod/api/courses')
+            .then(response => response.json())
+            .then(courses => {
+                const unitCourseSelect = document.querySelector('#add-unit select[name="courseCode"]');
+                const lecturerCourseSelect = document.querySelector('#add-lecturer select[name="courseCode"]');
+                unitCourseSelect.innerHTML = '<option value="">Select Course</option>';
+                lecturerCourseSelect.innerHTML = '<option value="">Select Course</option>';
+
+                for (const code in courses) {
+                    const course = courses[code];
+                    unitCourseSelect.innerHTML += `<option value="${code}">${course.name} (${code})</option>`;
+                    lecturerCourseSelect.innerHTML += `<option value="${code}">${course.name} (${code})</option>`;
+                }
+            });
+    }
+
+    // Load units for dropdown based on course
+    function loadUnits(courseCode, targetSelectId) {
+        if (!courseCode) return;
+        fetch('/hod/api/units')
+            .then(response => response.json())
+            .then(units => {
+                const unitSelect = document.querySelector(targetSelectId);
+                unitSelect.innerHTML = '<option value="">Select Unit</option>';
+                for (const code in units) {
+                    const unit = units[code];
+                    if (unit.courseCode === courseCode) {
+                        unitSelect.innerHTML += `<option value="${code}">${unit.name} (${code})</option>`;
+                    }
+                }
+            });
+    }
+
+    // View all courses
+    function viewCourses() {
+        fetch('/hod/api/courses')
+            .then(response => response.json())
+            .then(courses => {
+                let html = '<table><tr><th>Code</th><th>Name</th></tr>';
+                if (Object.keys(courses).length === 0) {
+                    html += '<tr><td colspan="2">No courses added yet</td></tr>';
+                } else {
+                    for (const code in courses) {
+                        const course = courses[code];
+                        html += `<tr><td>${code}</td><td>${course.name}</td></tr>`;
+                    }
+                }
+                html += '</table>';
+                document.querySelector('#courses').innerHTML = '<h2>View Courses</h2><button onclick="viewCourses()">Refresh Courses</button>' + html;
+            });
+    }
+
+    // View all units
+    function viewUnits() {
+        fetch('/hod/api/units')
+            .then(response => response.json())
+            .then(units => {
+                let html = '<table><tr><th>Code</th><th>Name</th><th>Course</th></tr>';
+                if (Object.keys(units).length === 0) {
+                    html += '<tr><td colspan="3">No units added yet</td></tr>';
+                } else {
+                    for (const code in units) {
+                        const unit = units[code];
+                        html += `<tr><td>${code}</td><td>${unit.name}</td><td>${unit.courseCode}</td></tr>`;
+                    }
+                }
+                html += '</table>';
+                document.querySelector('#units').innerHTML = '<h2>View Units</h2><button onclick="viewUnits()">Refresh Units</button>' + html;
+            });
+    }
+
+    // View all HODs
+    function viewHODs() {
+        fetch('/hod/api/hods')
+            .then(response => response.json())
+            .then(hods => {
+                let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th></tr>';
+                if (Object.keys(hods).length === 0) {
+                    html += '<tr><td colspan="4">No HODs added yet</td></tr>';
+                } else {
+                    for (const id in hods) {
+                        const hod = hods[id];
+                        html += `<tr><td>${hod.id}</td><td>${hod.name}</td><td>${hod.email || 'N/A'}</td><td>${hod.department || 'N/A'}</td></tr>`;
+                    }
+                }
+                html += '</table>';
+                document.querySelector('#view-hods').innerHTML = '<h2>View HODs</h2><button onclick="viewHODs()">Refresh HODs</button>' + html;
+            });
+    }
+
+    // View all lecturers
+    function viewLecturers() {
+        fetch('/hod/api/lecturers')
+            .then(response => response.json())
+            .then(lecturers => {
+                let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Course</th><th>Unit</th></tr>';
+                if (Object.keys(lecturers).length === 0) {
+                    html += '<tr><td colspan="5">No lecturers added yet</td></tr>';
+                } else {
+                    for (const id in lecturers) {
+                        const l = lecturers[id];
+                        html += `<tr><td>${l.lecturerId}</td><td>${l.name}</td><td>${l.email}</td><td>${l.courseCode}</td><td>${l.unitCode}</td></tr>`;
+                    }
+                }
+                html += '</table>';
+                document.querySelector('#lecturers').innerHTML = '<h2>View Lecturers</h2><button onclick="viewLecturers()">Refresh Lecturers</button>' + html;
+            });
+    }
+
+    // Tab navigation
+    function showTab(tabName) {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        document.querySelectorAll('.tab-nav button').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tab-nav button[onclick="showTab('${tabName}')"]`).classList.add('active');
+
+        if (tabName === 'courses') viewCourses();
+        else if (tabName === 'units') viewUnits();
+        else if (tabName === 'view-hods') viewHODs();
+        else if (tabName === 'lecturers') viewLecturers();
+    }
+
+    // Load courses on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCourses();
+        document.querySelector('#add-lecturer select[name="courseCode"]').addEventListener('change', function() {
+            loadUnits(this.value, '#add-lecturer select[name="unitCode"]');
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "CS": {
+    "code": "CS",
+    "name": "Computer Science"
+  },
+  "IT": {
+    "code": "IT",
+    "name": "Information Technology"
+  },
+  "SE": {
+    "code": "SE",
+    "name": "Software Engineering"
+  }
+}

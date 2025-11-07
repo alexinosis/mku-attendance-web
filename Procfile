@@ -1,0 +1,1 @@
+web: java -jar target/mku-attendance-web-1.0.0.jar

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance Report - MKU</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        
+        header { background: #2C3E50; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #2C3E50; color: white; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .btn { padding: 10px 20px; background: #2C3E50; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Attendance Report - <span th:text="${lecturer.unitCode}"></span></h1>
+        <p>Lecturer: <span th:text="${lecturer.name}"></span></p>
+    </header>
+
+    <div class="card">
+        <h2>Attendance Statistics</h2>
+        <div class="stats">
+            <div class="stat-card">
+                <h3 th:text="${totalRecords}">0</h3>
+                <p>Total Records</p>
+            </div>
+            <div class="stat-card">
+                <h3 th:text="${presentCount}" style="color: #27ae60;">0</h3>
+                <p>Present</p>
+            </div>
+            <div class="stat-card">
+                <h3 th:text="${absentCount}" style="color: #e74c3c;">0</h3>
+                <p>Absent</p>
+            </div>
+            <div class="stat-card">
+                <h3 th:text="${attendanceRate} + '%'">0%</h3>
+                <p>Attendance Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Attendance Records</h2>
+        <div th:if="${attendanceRecords != null and !attendanceRecords.empty}">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="record : ${attendanceRecords}">
+                        <td th:text="${record.studentId}"></td>
+                        <td th:text="${#strings.substring(record.date, 0, 10)}"></td>
+                        <td>
+                            <span th:if="${record.present}" style="color: #27ae60; font-weight: bold;">PRESENT</span>
+                            <span th:unless="${record.present}" style="color: #e74c3c; font-weight: bold;">ABSENT</span>
+                        </td>
+                        <td th:text="${#strings.substring(record.date, 11, 16)}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${attendanceRecords == null or attendanceRecords.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+            <p>No attendance records found.</p>
+        </div>
+    </div>
+
+    <a th:href="@{/lecturer/dashboard(lecturerId=${lecturer.lecturerId})}" class="btn">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+</body>
+</html>

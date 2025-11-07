@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student Registration - MKU</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input { padding: 8px; width: 300px; }
+        button { padding: 10px 20px; background: green; color: white; border: none; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+    </style>
+</head>
+<body>
+<h1>Student Registration</h1>
+
+<div th:if="${error}" class="error" th:text="${error}"></div>
+<div th:if="${success}" class="success" th:text="${success}"></div>
+
+<form method="post" action="/student/register">
+    <div class="form-group">
+        <label>First Name:</label>
+        <input type="text" name="firstName" required>
+    </div>
+    <div class="form-group">
+        <label>Last Name:</label>
+        <input type="text" name="lastName" required>
+    </div>
+    <div class="form-group">
+        <label>Admission No:</label>
+        <input type="text" name="studentId" required>
+    </div>
+    <div class="form-group">
+        <label>Email:</label>
+        <input type="email" name="email" required>
+    </div>
+    <div class="form-group">
+        <label>Password:</label>
+        <input type="password" name="password" required>
+    </div>
+    <button type="submit">Register</button>
+</form>
+
+<p><a href="/">Back to Home</a></p>
+</body>
+</html>

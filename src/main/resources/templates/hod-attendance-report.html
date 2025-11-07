@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance Reports - HOD Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        header { background: #FF8C00; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .filter-section { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .filter-row { display: flex; gap: 15px; align-items: end; flex-wrap: wrap; }
+        .filter-group { flex: 1; min-width: 200px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #FF8C00; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-secondary { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; }
+        .status-present { color: #28a745; font-weight: bold; }
+        .status-absent { color: #dc3545; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #FF8C00; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .summary { background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>MKU Attendance System - Attendance Reports</h1>
+        <p>Welcome, <strong th:text="${hod.name}">HOD</strong></p>
+    </header>
+
+    <a th:href="@{/hod/dashboard(hodId=${hod.id})}" class="back-link">← Back to Dashboard</a>
+
+    <div class="summary">
+        <h3>Attendance Summary</h3>
+        <p>Total Records: <strong th:text="${totalRecords}">0</strong> |
+            Showing: <strong th:text="${filteredCount}">0</strong> |
+            <span th:if="${unitCode != null and !unitCode.isEmpty() or date != null and !date.isEmpty() or status != null and status != 'ALL' or studentId != null and !studentId.isEmpty()}">
+               Filters Applied:
+               <span th:if="${unitCode != null and !unitCode.isEmpty()}">Unit: <strong th:text="${unitCode}"></strong></span>
+               <span th:if="${date != null and !date.isEmpty()}"> | Date: <strong th:text="${date}"></strong></span>
+               <span th:if="${status != null and status != 'ALL'}"> | Status: <strong th:text="${status}"></strong></span>
+               <span th:if="${studentId != null and !studentId.isEmpty()}"> | Student ID: <strong th:text="${studentId}"></strong></span>
+           </span>
+            <span th:if="${(unitCode == null or unitCode.isEmpty()) and (date == null or date.isEmpty()) and (status == null or status == 'ALL') and (studentId == null or studentId.isEmpty())}">Showing all records</span>
+        </p>
+    </div>
+
+    <div class="filter-section">
+        <h2>Filter Attendance Records</h2>
+        <form th:action="@{/hod/attendance-report}" method="get">
+            <input type="hidden" name="hodId" th:value="${hod.id}">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Unit Code</label>
+                    <select name="unitCode">
+                        <option value="">All Units</option>
+                        <option th:each="unit : ${availableUnits}"
+                                th:value="${unit}"
+                                th:text="${unit}"
+                                th:selected="${unitCode == unit}"></option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Date</label>
+                    <input type="date" name="date" th:value="${date}">
+                </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="ALL">All Status</option>
+                        <option value="PRESENT" th:selected="${status == 'PRESENT'}">Present</option>
+                        <option value="ABSENT" th:selected="${status == 'ABSENT'}">Absent</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Student ID</label>
+                    <input type="text" name="studentId" th:value="${studentId}" placeholder="Search by student ID...">
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button type="submit" class="btn-secondary">Apply Filters</button>
+                <a th:href="@{/hod/attendance-report(hodId=${hod.id})}" class="btn-secondary" style="display: inline-block; padding: 10px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">Clear Filters</a>
+                <a th:href="@{/hod/download-attendance-report(hodId=${hod.id}, unitCode=${unitCode}, date=${date}, status=${status}, studentId=${studentId})}"
+                   class="btn-success"
+                   style="display: inline-block; padding: 10px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;">
+                    Download CSV Report
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div th:if="${attendanceRecords != null and !attendanceRecords.empty}">
+        <table>
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Student ID</th>
+                <th>Student Name</th>
+                <th>Course</th>
+                <th>Unit Code</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="record : ${attendanceRecords}">
+                <td th:text="${record.date}"></td>
+                <td th:text="${record.time}"></td>
+                <td th:text="${record.studentId}"></td>
+                <td th:text="${record.studentName}"></td>
+                <td th:text="${record.course}"></td>
+                <td th:text="${record.unitCode}"></td>
+                <td>
+                    <span th:if="${record.present}" class="status-present">PRESENT</span>
+                    <span th:if="${!record.present}" class="status-absent">ABSENT</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:if="${attendanceRecords == null or attendanceRecords.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+        <h3>No attendance records found</h3>
+        <p>No records match your filter criteria. Try adjusting your filters.</p>
+    </div>
+</div>
+</body>
+</html>

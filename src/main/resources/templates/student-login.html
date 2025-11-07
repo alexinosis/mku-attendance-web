@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student Login - MKU</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input { padding: 8px; width: 300px; }
+        button { padding: 10px 20px; background: #1E90FF; color: white; border: none; }
+        .error { color: red; margin: 10px 0; }
+        .container { max-width: 400px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Student Log In</h1>
+
+    <div th:if="${error}" class="error" th:text="${error}"></div>
+
+    <form method="post" action="/student/login">
+        <div class="form-group">
+            <label>Admission No:</label>
+            <input type="text" name="studentId" required>
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit">Log In</button>
+    </form>
+
+    <p style="margin-top: 20px;">
+        Don't have an account? <a href="/student/register">Sign up here</a>
+    </p>
+    <p><a href="/">Back to Home</a></p>
+</div>
+</body>
+</html>
