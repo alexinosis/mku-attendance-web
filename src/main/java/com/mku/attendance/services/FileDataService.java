@@ -21,14 +21,8 @@ import java.util.ArrayList;
 @Service
 public class FileDataService {
 
-    // Use absolute path for deployment compatibility
-    private static final String DATA_DIR;
-
-    static {
-        // Use user home directory for permanent storage
-        String userHome = System.getProperty("user.home");
-        DATA_DIR = Paths.get(userHome, "mku_attendance_data").toString() + File.separator;
-    }
+    // Use relative path for Railway compatibility
+    private static final String DATA_DIR = "./attendance_data/";
 
     private static final String HODS_FILE = DATA_DIR + "hods.json";
     private static final String STUDENTS_FILE = DATA_DIR + "students.json";
