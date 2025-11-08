@@ -20,12 +20,31 @@ public class AttendanceManager {
     @Autowired
     private StudentManager studentManager;
 
-    public AttendanceManager() {
+    @Autowired
+    private FileDataService fileDataService; // ADDED: File persistence
+
+    public AttendanceManager(FileDataService fileDataService) {
+        this.fileDataService = fileDataService;
         this.attendanceRecords = new ArrayList<>();
         this.activeLectures = new ConcurrentHashMap<>();
         this.pendingAutoMark = new ConcurrentHashMap<>();
         this.dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        System.out.println("AttendanceManager initialized");
+
+        // Load attendance records from file on startup
+        try {
+            attendanceRecords = fileDataService.loadAttendance();
+            if (attendanceRecords == null) {
+                attendanceRecords = new ArrayList<>();
+                System.out.println("No attendance data loaded, initializing empty attendance records");
+            } else {
+                System.out.println("✅ AttendanceManager initialized with " + attendanceRecords.size() + " attendance records");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error loading attendance records: " + e.getMessage());
+            attendanceRecords = new ArrayList<>();
+        }
+
+        System.out.println("✅ AttendanceManager initialized with file persistence");
     }
 
     // Inner class to track lecture sessions
@@ -123,7 +142,7 @@ public class AttendanceManager {
 
         LectureSession session = new LectureSession(unitCode, LocalDateTime.now(), durationMinutes);
         activeLectures.put(unitCode, session);
-        System.out.println("Lecture started for unit: " + unitCode + " for " + durationMinutes + " minutes");
+        System.out.println("✅ Lecture started for unit: " + unitCode + " for " + durationMinutes + " minutes");
         return true;
     }
 
@@ -136,7 +155,7 @@ public class AttendanceManager {
             session.endLecture();
             autoMarkAbsentStudents(unitCode, session.getMarkedStudents());
             activeLectures.remove(unitCode);
-            System.out.println("Lecture ended for unit: " + unitCode + ". Auto-marked absent students.");
+            System.out.println("✅ Lecture ended for unit: " + unitCode + ". Auto-marked absent students.");
         }
     }
 
@@ -154,6 +173,9 @@ public class AttendanceManager {
 
         Attendance attendance = new Attendance(studentId, unitCode, date, present);
         attendanceRecords.add(attendance);
+
+        // FIXED: Save to file
+        saveAttendanceToFile();
     }
 
     /**
@@ -190,7 +212,7 @@ public class AttendanceManager {
     // ========== CORE ATTENDANCE METHODS ==========
 
     /**
-     * Mark student attendance (main method)
+     * Mark student attendance (main method) - UPDATED with save
      */
     public Map<String, Object> markAttendance(String studentId, String unitCode) {
         Map<String, Object> result = new HashMap<>();
@@ -257,7 +279,10 @@ public class AttendanceManager {
         Attendance attendance = new Attendance(studentId, unitCode, timestamp, true);
         attendanceRecords.add(attendance);
 
-        System.out.println("Attendance marked for student: " + studentId + " in unit: " + unitCode);
+        // FIXED: Save attendance records to file
+        saveAttendanceToFile();
+
+        System.out.println("✅ Attendance marked and saved for student: " + studentId + " in unit: " + unitCode);
 
         result.put("success", true);
         result.put("message", "Attendance marked successfully!");
@@ -266,7 +291,7 @@ public class AttendanceManager {
     }
 
     /**
-     * Manual attendance marking for lecturers
+     * Manual attendance marking for lecturers - UPDATED with save
      */
     public boolean manuallyMarkAttendance(String studentId, String unitCode, boolean present, String date) {
         if (studentId == null || unitCode == null || date == null) {
@@ -282,9 +307,14 @@ public class AttendanceManager {
 
             Attendance attendance = new Attendance(studentId, unitCode, date, present);
             attendanceRecords.add(attendance);
+
+            // FIXED: Save attendance records to file
+            saveAttendanceToFile();
+
+            System.out.println("✅ Manual attendance marked and saved: " + studentId + " for unit " + unitCode + " - " + (present ? "PRESENT" : "ABSENT"));
             return true;
         } catch (Exception e) {
-            System.err.println("Error in manual attendance marking: " + e.getMessage());
+            System.err.println("❌ Error in manual attendance marking: " + e.getMessage());
             return false;
         }
     }
@@ -488,7 +518,7 @@ public class AttendanceManager {
     }
 
     /**
-     * Auto-mark absent students when lecture ends
+     * Auto-mark absent students when lecture ends - UPDATED with save
      */
     private void autoMarkAbsentStudents(String unitCode, Set<String> presentStudents) {
         String currentDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -522,6 +552,9 @@ public class AttendanceManager {
                 }
             }
         }
+
+        // FIXED: Save attendance records to file after auto-marking
+        saveAttendanceToFile();
 
         // Store for any future processing
         pendingAutoMark.put(unitCode, presentStudents);
@@ -648,5 +681,33 @@ public class AttendanceManager {
                 iterator.remove();
             }
         }
+    }
+
+    // ========== ADDED PERSISTENCE METHODS ==========
+
+    /**
+     * Save attendance records to file
+     */
+    public void saveAttendanceToFile() {
+        try {
+            fileDataService.saveAttendance(attendanceRecords);
+            System.out.println("✅ Attendance data saved successfully (" + attendanceRecords.size() + " records)");
+        } catch (Exception e) {
+            System.err.println("❌ Error saving attendance data: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Manual save method that can be called from controllers
+     */
+    public void saveAllAttendanceData() {
+        saveAttendanceToFile();
+    }
+
+    /**
+     * Get data directory info for debugging
+     */
+    public String getDataDirectoryInfo() {
+        return fileDataService.getDataDirectory();
     }
 }

@@ -5,24 +5,37 @@ import com.mku.attendance.entities.HOD;
 import com.mku.attendance.entities.Course;
 import com.mku.attendance.entities.Unit;
 import com.mku.attendance.entities.LecturerData;
+import com.mku.attendance.entities.Attendance;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class FileDataService {
 
-    private static final String DATA_DIR = "attendance_data/";
+    // Use absolute path for deployment compatibility
+    private static final String DATA_DIR;
+
+    static {
+        // Use user home directory for permanent storage
+        String userHome = System.getProperty("user.home");
+        DATA_DIR = Paths.get(userHome, "mku_attendance_data").toString() + File.separator;
+    }
+
     private static final String HODS_FILE = DATA_DIR + "hods.json";
     private static final String STUDENTS_FILE = DATA_DIR + "students.json";
     private static final String COURSES_FILE = DATA_DIR + "courses.json";
     private static final String UNITS_FILE = DATA_DIR + "units.json";
     private static final String LECTURERS_FILE = DATA_DIR + "lecturers.json";
+    private static final String ATTENDANCE_FILE = DATA_DIR + "attendance.json";
 
     private final ObjectMapper objectMapper;
 
@@ -33,6 +46,7 @@ public class FileDataService {
         this.objectMapper.registerModule(new JavaTimeModule());
 
         createDataDirectory();
+        System.out.println("FileDataService initialized with data directory: " + DATA_DIR);
     }
 
     private void createDataDirectory() {
@@ -40,10 +54,12 @@ public class FileDataService {
         if (!dataDir.exists()) {
             boolean created = dataDir.mkdirs();
             if (created) {
-                System.out.println("Data directory created: " + DATA_DIR);
+                System.out.println("✅ Permanent data directory created: " + DATA_DIR);
             } else {
-                System.err.println("Failed to create data directory: " + DATA_DIR);
+                System.err.println("❌ Failed to create data directory: " + DATA_DIR);
             }
+        } else {
+            System.out.println("✅ Using existing data directory: " + DATA_DIR);
         }
     }
 
@@ -57,21 +73,19 @@ public class FileDataService {
         return loadFromFile(HODS_FILE, HOD.class, "HODs");
     }
 
-    // Save Students data - FIXED: Changed from Object to StudentData
+    // Save Students data
     public void saveStudents(Map<String, StudentData> students) {
         saveToFile(STUDENTS_FILE, students, "Students");
     }
 
-    // Load Students data - FIXED: Changed from Object to StudentData
+    // Load Students data
     public Map<String, StudentData> loadStudents() {
         Map<String, StudentData> students = loadFromFile(STUDENTS_FILE, StudentData.class, "Students");
 
-        // Debug: Print loaded student information
         if (!students.isEmpty()) {
             System.out.println("=== LOADED STUDENTS ===");
             students.forEach((id, student) -> {
-                System.out.println("ID: " + id +
-                        ", Name: " + student.getFirstName() + " " + student.getLastName() +
+                System.out.println("ID: " + id + ", Name: " + student.getName() +
                         ", Course: " + student.getCourse() +
                         ", Units: " + (student.getRegisteredUnits() != null ? student.getRegisteredUnits().size() : 0));
             });
@@ -111,35 +125,76 @@ public class FileDataService {
         return loadFromFile(LECTURERS_FILE, LecturerData.class, "Lecturers");
     }
 
-    // Generic save method
+    // Save Attendance data
+    public void saveAttendance(List<Attendance> attendanceRecords) {
+        saveToFile(ATTENDANCE_FILE, attendanceRecords, "Attendance");
+    }
+
+    // Load Attendance data
+    public List<Attendance> loadAttendance() {
+        return loadListFromFile(ATTENDANCE_FILE, Attendance.class, "Attendance");
+    }
+
+    // Generic save method for Maps
     private <T> void saveToFile(String filename, Map<String, T> data, String dataType) {
         try {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(filename), data);
-            System.out.println(dataType + " data saved successfully to: " + filename);
+            System.out.println("✅ " + dataType + " data saved successfully to: " + filename);
         } catch (IOException e) {
-            System.err.println("Error saving " + dataType + " data: " + e.getMessage());
+            System.err.println("❌ Error saving " + dataType + " data: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    // Generic load method
+    // Generic save method for Lists
+    private <T> void saveToFile(String filename, List<T> data, String dataType) {
+        try {
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(filename), data);
+            System.out.println("✅ " + dataType + " data saved successfully to: " + filename);
+        } catch (IOException e) {
+            System.err.println("❌ Error saving " + dataType + " data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Generic load method for Maps
     private <T> Map<String, T> loadFromFile(String filename, Class<T> valueType, String dataType) {
         try {
             File file = new File(filename);
             if (file.exists()) {
-                System.out.println("Loading " + dataType + " from: " + filename);
+                System.out.println("📁 Loading " + dataType + " from: " + filename);
                 Map<String, T> data = objectMapper.readValue(file,
                         objectMapper.getTypeFactory().constructMapType(HashMap.class, String.class, valueType));
-                System.out.println(dataType + " data loaded successfully. Count: " + data.size());
+                System.out.println("✅ " + dataType + " data loaded successfully. Count: " + data.size());
                 return data;
             } else {
-                System.out.println("No " + dataType + " data file found: " + filename);
+                System.out.println("ℹ️ No " + dataType + " data file found: " + filename);
             }
         } catch (IOException e) {
-            System.err.println("Error loading " + dataType + " data: " + e.getMessage());
+            System.err.println("❌ Error loading " + dataType + " data: " + e.getMessage());
             e.printStackTrace();
         }
         return new HashMap<>();
+    }
+
+    // Generic load method for Lists
+    private <T> List<T> loadListFromFile(String filename, Class<T> valueType, String dataType) {
+        try {
+            File file = new File(filename);
+            if (file.exists()) {
+                System.out.println("📁 Loading " + dataType + " from: " + filename);
+                List<T> data = objectMapper.readValue(file,
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, valueType));
+                System.out.println("✅ " + dataType + " data loaded successfully. Count: " + data.size());
+                return data;
+            } else {
+                System.out.println("ℹ️ No " + dataType + " data file found: " + filename);
+            }
+        } catch (IOException e) {
+            System.err.println("❌ Error loading " + dataType + " data: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
     }
 
     // Comprehensive auto-save
@@ -147,12 +202,19 @@ public class FileDataService {
                             Map<String, StudentData> students,
                             Map<String, Course> courses,
                             Map<String, Unit> units,
-                            Map<String, LecturerData> lecturers) {
+                            Map<String, LecturerData> lecturers,
+                            List<Attendance> attendanceRecords) {
         saveHODs(hods);
         saveStudents(students);
         saveCourses(courses);
         saveUnits(units);
         saveLecturers(lecturers);
-        System.out.println("All data auto-saved successfully");
+        saveAttendance(attendanceRecords);
+        System.out.println("✅ All data auto-saved successfully to permanent storage");
+    }
+
+    // Get data directory path for info
+    public String getDataDirectory() {
+        return DATA_DIR;
     }
 }

@@ -12,10 +12,10 @@ public class HODManager {
     private final UnitManager unitManager;
     private final AttendanceManager attendanceManager;
     private final FileDataService fileDataService;
-    private static Map<String, HOD> hods = new HashMap<>();
+    private Map<String, HOD> hods = new HashMap<>();
 
-    // ADDED: Lecturer database in HODManager
-    private final Map<String, LecturerData> lecturers = new HashMap<>();
+    // FIXED: Lecturers now persisted through FileDataService
+    private Map<String, LecturerData> lecturers = new HashMap<>();
 
     @Autowired
     public HODManager(CourseManager courseManager, UnitManager unitManager,
@@ -28,20 +28,23 @@ public class HODManager {
         // Load HODs data from file on startup
         hods = fileDataService.loadHODs();
 
-        // If no data exists in file, create default HOD
+        // Load Lecturers data from file on startup
+        lecturers = fileDataService.loadLecturers();
+
+        // If no HOD data exists in file, create default HOD
         if (hods.isEmpty()) {
             System.out.println("No HOD data found. Creating default HOD...");
             HOD defaultHod = new HOD("HOD001", "hod", "Dr. Smith");
             defaultHod.addCourse("CS101");
             hods.put("HOD001", defaultHod);
-            // Save the default data to file
-            fileDataService.saveHODs(hods);
-            System.out.println("Default HOD created and saved: HOD001");
+            saveHODsToFile();
+            System.out.println("✅ Default HOD created and saved: HOD001");
         } else {
-            System.out.println("HOD data loaded from file: " + hods.size() + " HODs");
+            System.out.println("✅ HOD data loaded from file: " + hods.size() + " HODs");
         }
 
-        System.out.println("HODManager initialized");
+        System.out.println("✅ Lecturer data loaded from file: " + lecturers.size() + " lecturers");
+        System.out.println("✅ HODManager initialized with full persistence");
     }
 
     public HOD getHOD(String id) {
@@ -50,29 +53,28 @@ public class HODManager {
 
     public void addHOD(HOD hod) {
         hods.put(hod.getId(), hod);
-        // Save to file immediately when adding new HOD
-        fileDataService.saveHODs(hods);
-        System.out.println("HOD added and saved to file: " + hod.getId());
+        saveHODsToFile();
+        System.out.println("✅ HOD added and saved to file: " + hod.getId());
     }
 
     public Map<String, HOD> getHODs() {
-        return hods;
+        return new HashMap<>(hods);
     }
 
-    public static Map<String, HOD> getHodDatabase() {
-        return hods;
+    public Map<String, HOD> getHodDatabase() {
+        return new HashMap<>(hods);
     }
 
     public CourseManager getCourseManager() { return courseManager; }
     public UnitManager getUnitManager() { return unitManager; }
     public AttendanceManager getAttendanceManager() { return attendanceManager; }
 
-    // Method to manually save HODs data (can be called from controllers if needed)
+    // Method to manually save HODs data
     public void saveHODsToFile() {
         fileDataService.saveHODs(hods);
     }
 
-    // ========== LECTURER MANAGEMENT METHODS ==========
+    // ========== LECTURER MANAGEMENT METHODS WITH PERSISTENCE ==========
 
     public Map<String, LecturerData> getLecturers() {
         System.out.println("HODManager: Returning " + lecturers.size() + " lecturers");
@@ -83,7 +85,8 @@ public class HODManager {
         if (lecturer != null && lecturer.getLecturerId() != null) {
             String lecturerId = lecturer.getLecturerId().toUpperCase();
             lecturers.put(lecturerId, lecturer);
-            System.out.println("✅ Lecturer added to HODManager: " + lecturerId);
+            saveLecturersToFile(); // FIXED: Now saves to file
+            System.out.println("✅ Lecturer added and saved: " + lecturerId);
             System.out.println("   Name: " + lecturer.getName());
             System.out.println("   Unit: " + lecturer.getUnitCode());
             System.out.println("   Course: " + lecturer.getCourseCode());
@@ -109,16 +112,33 @@ public class HODManager {
     public void removeLecturer(String lecturerId) {
         if (lecturerId != null) {
             lecturers.remove(lecturerId.toUpperCase());
-            System.out.println("Lecturer removed: " + lecturerId);
+            saveLecturersToFile(); // FIXED: Now saves to file
+            System.out.println("✅ Lecturer removed and saved: " + lecturerId);
         }
     }
 
-    // ADDED: Missing getLecturerCount method
     public int getLecturerCount() {
         return lecturers.size();
     }
 
     public String getAvailableLecturerIds() {
         return String.join(", ", lecturers.keySet());
+    }
+
+    // FIXED: Save lecturers to file
+    public void saveLecturersToFile() {
+        try {
+            fileDataService.saveLecturers(lecturers);
+            System.out.println("✅ Lecturers data saved successfully");
+        } catch (Exception e) {
+            System.err.println("❌ Error saving lecturers data: " + e.getMessage());
+        }
+    }
+
+    // Comprehensive save all HOD data
+    public void saveAllHODData() {
+        saveHODsToFile();
+        saveLecturersToFile();
+        System.out.println("✅ All HOD data saved successfully");
     }
 }
