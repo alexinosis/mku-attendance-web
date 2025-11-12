@@ -2,599 +2,542 @@ package com.mku.attendance.controllers;
 
 import com.mku.attendance.entities.StudentData;
 import com.mku.attendance.services.StudentManager;
-import com.mku.attendance.services.HODManager;
-import com.mku.attendance.services.AttendanceManager;
-import jakarta.servlet.http.HttpSession;
+import com.mku.attendance.services.AuthService;
+import com.mku.attendance.services.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 
-@Controller
-@RequestMapping("/student")
+@RestController
+@RequestMapping("/api/students")
+@CrossOrigin(origins = "*") // Allow React frontend to connect
 public class StudentController {
 
     @Autowired
     private StudentManager studentManager;
 
     @Autowired
-    private HODManager hodManager;
+    private AuthService authService;
 
     @Autowired
-    private AttendanceManager attendanceManager;
+    private EmailService emailService;
 
-    // ========== REGISTRATION METHODS ==========
+    @Value("${app.email.enabled:true}")
+    private boolean emailEnabled;
 
-    @GetMapping("/register")
-    public String showRegisterForm(Model model) {
-        // Add empty student object to avoid thymeleaf errors
-        model.addAttribute("student", new StudentData());
-        return "student-register";
-    }
+    // ========== STUDENT MANAGEMENT ENDPOINTS ==========
 
-    @PostMapping("/register")
-    public String registerStudent(
-            @RequestParam String firstName,
-            @RequestParam String lastName,
-            @RequestParam String studentId,
-            @RequestParam String email,
-            @RequestParam String password,
-            Model model) {
-
-        System.out.println("Student registration attempt for: " + studentId);
-
-        // Validation
-        if (firstName == null || firstName.trim().isEmpty() ||
-                lastName == null || lastName.trim().isEmpty() ||
-                studentId == null || studentId.trim().isEmpty() ||
-                email == null || email.trim().isEmpty() ||
-                password == null || password.trim().isEmpty()) {
-            model.addAttribute("error", "All fields are required.");
-            return "student-register";
-        }
-
-        // Clean inputs
-        firstName = firstName.trim();
-        lastName = lastName.trim();
-        studentId = studentId.trim().toUpperCase();
-        email = email.trim();
-        password = password.trim();
-
-        // Email validation
-        if (!email.contains("@") || !email.contains(".")) {
-            model.addAttribute("error", "Invalid email format.");
-            return "student-register";
-        }
-
-        // Check if student already exists
-        if (studentManager.exists(studentId)) {
-            model.addAttribute("error", "Student ID already exists.");
-            return "student-register";
-        }
+    /**
+     * GET ALL STUDENTS - For React frontend student management
+     */
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getAllStudents() {
+        System.out.println("📋 Fetching all students for React frontend");
 
         try {
-            // Create new student
-            StudentData student = new StudentData(studentId, firstName, lastName, email, "", "", password);
+            Map<String, StudentData> students = studentManager.getStudents();
+            List<Map<String, Object>> studentList = students.values().stream()
+                    .map(StudentData::toMap)
+                    .toList();
 
-            // Add student - method returns void
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("students", studentList);
+            response.put("count", studentList.size());
+
+            System.out.println("✅ Sent " + studentList.size() + " students to React frontend");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching students: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to fetch students"
+            ));
+        }
+    }
+
+    /**
+     * GET STUDENT BY ID - For React frontend
+     */
+    @GetMapping("/{studentId}")
+    public ResponseEntity<Map<String, Object>> getStudent(@PathVariable String studentId) {
+        System.out.println("🔍 Fetching student: " + studentId);
+
+        try {
+            StudentData student = studentManager.getStudent(studentId);
+            if (student == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "success", false,
+                        "message", "Student not found"
+                ));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("student", student.toMap());
+
+            System.out.println("✅ Student found: " + studentId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching student: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to fetch student"
+            ));
+        }
+    }
+
+    /**
+     * CREATE NEW STUDENT - For React frontend student registration
+     */
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> createStudent(@RequestBody Map<String, String> studentData) {
+        System.out.println("🆕 Creating new student from React frontend");
+
+        try {
+            String studentId = studentData.get("student_id");
+            String name = studentData.get("name");
+            String email = studentData.get("email");
+            String password = studentData.get("password");
+
+            // Validate required fields
+            if (studentId == null || studentId.trim().isEmpty() ||
+                    name == null || name.trim().isEmpty() ||
+                    email == null || email.trim().isEmpty() ||
+                    password == null || password.trim().isEmpty()) {
+
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "All fields are required: student_id, name, email, password"
+                ));
+            }
+
+            // Clean inputs
+            studentId = studentId.trim().toUpperCase();
+            name = name.trim();
+            email = email.trim().toLowerCase();
+            password = password.trim();
+
+            // Enhanced email validation
+            System.out.println("🔍 Validating email: " + email);
+            Map<String, Object> emailValidation = emailService.validateEmailWithDetails(email);
+            System.out.println("🔍 Email validation details: " + emailValidation);
+
+            boolean isEmailValid = emailService.validateEmailExistence(email);
+            System.out.println("🔍 Email validation result: " + isEmailValid);
+
+            if (!isEmailValid) {
+                System.out.println("❌ Registration failed: Invalid email - " + email);
+
+                // Provide specific error message based on validation details
+                String errorMessage = "Invalid email address";
+                if (Boolean.TRUE.equals(emailValidation.get("isDisposable"))) {
+                    errorMessage = "Disposable/temporary email addresses are not allowed. Please use your permanent email.";
+                } else if (!Boolean.TRUE.equals(emailValidation.get("isValidFormat"))) {
+                    errorMessage = "Invalid email format. Please check and try again.";
+                } else if (!Boolean.TRUE.equals(emailValidation.get("hasValidTld"))) {
+                    errorMessage = "Email domain is not supported. Please use a valid email provider.";
+                }
+
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", errorMessage
+                ));
+            }
+
+            // Check if student already exists
+            if (studentManager.exists(studentId)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Student ID already exists"
+                ));
+            }
+
+            // Check if email already registered
+            if (authService.findStudentByEmail(email) != null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Email address already registered"
+                ));
+            }
+
+            // Create new student
+            StudentData student = new StudentData(studentId, name, email, password);
+
+            // Validate student data
+            if (!student.isValidForRegistration()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Invalid student data"
+                ));
+            }
+
+            // Add student
             studentManager.addStudent(student);
 
-            // Verify student was added by checking if it exists now
-            StudentData verifiedStudent = studentManager.getStudent(studentId);
-            if (verifiedStudent != null) {
-                model.addAttribute("success", "Registration successful! You can now log in.");
-                System.out.println("Student registered successfully: " + studentId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Student created successfully");
+            response.put("student", student.toMap());
+
+            System.out.println("✅ Student created: " + studentId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error creating student: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to create student: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * UPDATE STUDENT - For React frontend
+     */
+    @PutMapping("/{studentId}")
+    public ResponseEntity<Map<String, Object>> updateStudent(
+            @PathVariable String studentId,
+            @RequestBody Map<String, String> studentData) {
+
+        System.out.println("✏️ Updating student: " + studentId);
+
+        try {
+            StudentData existingStudent = studentManager.getStudent(studentId);
+            if (existingStudent == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "success", false,
+                        "message", "Student not found"
+                ));
+            }
+
+            // Update fields if provided
+            if (studentData.containsKey("name")) {
+                existingStudent.setName(studentData.get("name").trim());
+            }
+            if (studentData.containsKey("email")) {
+                String newEmail = studentData.get("email").trim().toLowerCase();
+
+                // Enhanced email validation for updates
+                System.out.println("🔍 Validating email for update: " + newEmail);
+                boolean isEmailValid = emailService.validateEmailExistence(newEmail);
+                System.out.println("🔍 Email validation result: " + isEmailValid);
+
+                if (!isEmailValid) {
+                    System.out.println("❌ Update failed: Invalid email - " + newEmail);
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "success", false,
+                            "message", "Invalid email address. Please use a valid, non-disposable email."
+                    ));
+                }
+
+                // Check if email is already used by another student
+                StudentData studentWithEmail = authService.findStudentByEmail(newEmail);
+                if (studentWithEmail != null && !studentWithEmail.getStudentId().equals(studentId)) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "success", false,
+                            "message", "Email address already registered by another student"
+                    ));
+                }
+
+                existingStudent.setEmail(newEmail);
+            }
+            if (studentData.containsKey("course")) {
+                existingStudent.setCourse(studentData.get("course").trim());
+            }
+
+            // Update student
+            boolean updated = studentManager.updateStudent(existingStudent);
+            if (!updated) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Failed to update student"
+                ));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Student updated successfully");
+            response.put("student", existingStudent.toMap());
+
+            System.out.println("✅ Student updated: " + studentId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error updating student: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to update student"
+            ));
+        }
+    }
+
+    /**
+     * DELETE STUDENT - For React frontend
+     */
+    @DeleteMapping("/{studentId}")
+    public ResponseEntity<Map<String, Object>> deleteStudent(@PathVariable String studentId) {
+        System.out.println("🗑️ Deleting student: " + studentId);
+
+        try {
+            boolean deleted = studentManager.removeStudent(studentId);
+            if (!deleted) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "success", false,
+                        "message", "Student not found"
+                ));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Student deleted successfully");
+
+            System.out.println("✅ Student deleted: " + studentId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error deleting student: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to delete student"
+            ));
+        }
+    }
+
+    // ========== AUTHENTICATION ENDPOINTS ==========
+
+    /**
+     * STUDENT LOGIN - For React frontend (CHANGED ENDPOINT TO AVOID CONFLICT)
+     */
+    @PostMapping("/auth/login")
+    public ResponseEntity<Map<String, Object>> loginStudent(@RequestBody Map<String, String> loginData) {
+        String studentId = loginData.get("student_id");
+        String password = loginData.get("password");
+
+        System.out.println("🔐 Student login attempt via API: " + studentId);
+
+        Map<String, Object> result = authService.loginStudent(studentId, password);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * INITIATE PASSWORD RESET - For React frontend (CHANGED ENDPOINT TO AVOID CONFLICT)
+     */
+    @PostMapping("/auth/password-reset/initiate")
+    public ResponseEntity<Map<String, Object>> initiatePasswordReset(@RequestBody Map<String, String> resetData) {
+        String studentId = resetData.get("student_id");
+        String email = resetData.get("email");
+
+        System.out.println("🔐 Password reset initiated via API: " + studentId);
+
+        Map<String, Object> result = authService.initiatePasswordReset(studentId, email);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * VERIFY OTP AND RESET PASSWORD - For React frontend (CHANGED ENDPOINT TO AVOID CONFLICT)
+     */
+    @PostMapping("/auth/password-reset/verify")
+    public ResponseEntity<Map<String, Object>> verifyOTPAndResetPassword(@RequestBody Map<String, String> resetData) {
+        String studentId = resetData.get("student_id");
+        String otp = resetData.get("otp");
+        String newPassword = resetData.get("new_password");
+
+        System.out.println("🔐 OTP verification via API: " + studentId);
+
+        Map<String, Object> result = authService.verifyOTPAndResetPassword(studentId, otp, newPassword);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * RESEND OTP - For React frontend (CHANGED ENDPOINT TO AVOID CONFLICT)
+     */
+    @PostMapping("/auth/password-reset/resend")
+    public ResponseEntity<Map<String, Object>> resendOTP(@RequestBody Map<String, String> resetData) {
+        String studentId = resetData.get("student_id");
+
+        System.out.println("🔄 Resending OTP via API: " + studentId);
+
+        Map<String, Object> result = authService.resendOTP(studentId);
+        return ResponseEntity.ok(result);
+    }
+
+    // ========== ATTENDANCE ENDPOINTS ==========
+
+    /**
+     * GET ATTENDANCE SUMMARY - For React frontend
+     */
+    @GetMapping("/{studentId}/attendance")
+    public ResponseEntity<Map<String, Object>> getAttendanceSummary(@PathVariable String studentId) {
+        System.out.println("📊 Fetching attendance summary for: " + studentId);
+
+        try {
+            Map<String, Map<String, Object>> attendanceSummary = studentManager.getAttendanceSummary(studentId);
+            Map<String, Object> overallStats = studentManager.getOverallStatistics(studentId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("attendanceSummary", attendanceSummary);
+            response.put("overallStats", overallStats);
+
+            System.out.println("✅ Attendance summary sent for: " + studentId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching attendance summary: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to fetch attendance summary"
+            ));
+        }
+    }
+
+    /**
+     * MARK ATTENDANCE - For React frontend
+     */
+    @PostMapping("/{studentId}/attendance")
+    public ResponseEntity<Map<String, Object>> markAttendance(
+            @PathVariable String studentId,
+            @RequestBody Map<String, String> attendanceData) {
+
+        String unitCode = attendanceData.get("unit_code");
+        boolean present = Boolean.parseBoolean(attendanceData.get("present"));
+
+        System.out.println("📝 Marking attendance for " + studentId + " in " + unitCode + ": " + (present ? "PRESENT" : "ABSENT"));
+
+        try {
+            studentManager.markAttendance(studentId, unitCode, present);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Attendance marked successfully");
+
+            System.out.println("✅ Attendance marked for: " + studentId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error marking attendance: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to mark attendance"
+            ));
+        }
+    }
+
+    // ========== UNIT REGISTRATION ENDPOINTS ==========
+
+    /**
+     * REGISTER UNIT - For React frontend
+     */
+    @PostMapping("/{studentId}/units")
+    public ResponseEntity<Map<String, Object>> registerUnit(
+            @PathVariable String studentId,
+            @RequestBody Map<String, String> unitData) {
+
+        String unitCode = unitData.get("unit_code");
+
+        System.out.println("📚 Registering unit " + unitCode + " for " + studentId);
+
+        try {
+            boolean registered = studentManager.registerUnitForStudent(studentId, unitCode);
+
+            Map<String, Object> response = new HashMap<>();
+            if (registered) {
+                response.put("success", true);
+                response.put("message", "Unit registered successfully");
+                System.out.println("✅ Unit registered: " + unitCode + " for " + studentId);
             } else {
-                model.addAttribute("error", "Registration failed. Please try again.");
-            }
-        } catch (Exception e) {
-            System.err.println("Error during student registration: " + e.getMessage());
-            model.addAttribute("error", "Registration failed due to system error.");
-        }
-
-        return "student-register";
-    }
-
-    // ========== LOGIN METHODS ==========
-
-    @GetMapping("/login")
-    public String showStudentLogin(Model model) {
-        model.addAttribute("student", new StudentData());
-        return "student-login";
-    }
-
-    @PostMapping("/login")
-    public String loginStudent(
-            @RequestParam String studentId,
-            @RequestParam String password,
-            HttpSession session,
-            Model model) {
-
-        System.out.println("Student login attempt for: " + studentId);
-
-        if (studentId == null || studentId.trim().isEmpty() || password == null || password.trim().isEmpty()) {
-            model.addAttribute("error", "Enter student ID and password.");
-            return "student-login";
-        }
-
-        studentId = studentId.trim().toUpperCase();
-
-        StudentData student = studentManager.getStudent(studentId);
-        System.out.println("Student found: " + (student != null ? student.getStudentId() : "null"));
-
-        if (student == null) {
-            model.addAttribute("error", "Invalid student ID. Please register first.");
-            return "student-login";
-        }
-
-        if (!student.getPassword().equals(password)) {
-            model.addAttribute("error", "Invalid password.");
-            return "student-login";
-        }
-
-        // Store student in session
-        session.setAttribute("studentId", studentId);
-        session.setAttribute("student", student);
-
-        System.out.println("Student login successful: " + studentId);
-        return "redirect:/student/dashboard";
-    }
-
-    // ========== DASHBOARD & PROFILE ==========
-
-    @GetMapping("/dashboard")
-    public String showStudentDashboard(HttpSession session, Model model) {
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId == null) {
-            return "redirect:/student/login";
-        }
-
-        StudentData student = studentManager.getStudent(studentId);
-        if (student == null) {
-            session.invalidate();
-            return "redirect:/student/login";
-        }
-
-        try {
-            // Get attendance summary with safe method invocation
-            Map<String, Map<String, Object>> attendanceSummary = new HashMap<>();
-            try {
-                java.lang.reflect.Method method = studentManager.getClass().getMethod("getAttendanceSummary", String.class);
-                Object result = method.invoke(studentManager, studentId);
-                if (result instanceof Map) {
-                    attendanceSummary = (Map<String, Map<String, Object>>) result;
-                }
-            } catch (Exception e) {
-                System.err.println("getAttendanceSummary method not available, using empty data");
-                // Create mock attendance summary
-                attendanceSummary = createMockAttendanceSummary(student);
+                response.put("success", false);
+                response.put("message", "Failed to register unit");
+                System.out.println("❌ Unit registration failed: " + unitCode + " for " + studentId);
             }
 
-            // Get overall statistics - FIXED: Use correct key names and ensure they exist
-            Map<String, Object> overallStats = new HashMap<>();
-            try {
-                java.lang.reflect.Method method = studentManager.getClass().getMethod("getOverallStatistics", String.class);
-                Object result = method.invoke(studentManager, studentId);
-                if (result instanceof Map) {
-                    overallStats = (Map<String, Object>) result;
-                }
-            } catch (Exception e) {
-                System.err.println("getOverallStatistics method not available, using mock data");
-                overallStats = createMockOverallStats(student);
-            }
-
-            // Ensure overallStats has the expected keys for the template
-            if (!overallStats.containsKey("overallAttendanceRate")) {
-                overallStats.put("overallAttendanceRate", 0.0);
-            }
-            if (!overallStats.containsKey("totalSessions")) {
-                overallStats.put("totalSessions", 0);
-            }
-            if (!overallStats.containsKey("totalPresent")) {
-                overallStats.put("totalPresent", 0);
-            }
-            if (!overallStats.containsKey("totalAbsent")) {
-                overallStats.put("totalAbsent", 0);
-            }
-
-            // Get units and courses safely
-            Map<String, Object> units = new HashMap<>();
-            Map<String, Object> courses = new HashMap<>();
-
-            if (hodManager != null) {
-                try {
-                    // Try to get unit manager
-                    java.lang.reflect.Method getUnitManagerMethod = hodManager.getClass().getMethod("getUnitManager");
-                    Object unitManager = getUnitManagerMethod.invoke(hodManager);
-                    if (unitManager != null) {
-                        java.lang.reflect.Method getUnitsMethod = unitManager.getClass().getMethod("getUnits");
-                        Object unitsResult = getUnitsMethod.invoke(unitManager);
-                        if (unitsResult instanceof Map) {
-                            units = (Map<String, Object>) unitsResult;
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println("Could not get units: " + e.getMessage());
-                }
-
-                try {
-                    // Try to get course manager
-                    java.lang.reflect.Method getCourseManagerMethod = hodManager.getClass().getMethod("getCourseManager");
-                    Object courseManager = getCourseManagerMethod.invoke(hodManager);
-                    if (courseManager != null) {
-                        java.lang.reflect.Method getCoursesMethod = courseManager.getClass().getMethod("getCourses");
-                        Object coursesResult = getCoursesMethod.invoke(courseManager);
-                        if (coursesResult instanceof Map) {
-                            courses = (Map<String, Object>) coursesResult;
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println("Could not get courses: " + e.getMessage());
-                }
-            }
-
-            // Check for active attendance sessions
-            boolean canTakeAttendance = false;
-            String activeUnitCode = null;
-            if (student.getRegisteredUnits() != null && !student.getRegisteredUnits().isEmpty()) {
-                for (String unitCode : student.getRegisteredUnits()) {
-                    try {
-                        java.lang.reflect.Method method = attendanceManager.getClass().getMethod("isAttendanceActive", String.class);
-                        boolean isActive = (Boolean) method.invoke(attendanceManager, unitCode);
-                        if (isActive) {
-                            canTakeAttendance = true;
-                            activeUnitCode = unitCode;
-                            break;
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Error checking attendance status for unit " + unitCode + ": " + e.getMessage());
-                    }
-                }
-            }
-
-            model.addAttribute("student", student);
-            model.addAttribute("attendanceSummary", attendanceSummary);
-            model.addAttribute("overallStats", overallStats);
-            model.addAttribute("units", units);
-            model.addAttribute("courses", courses);
-            model.addAttribute("canTakeAttendance", canTakeAttendance);
-            model.addAttribute("activeUnitCode", activeUnitCode);
-
-            // Add flash messages
-            if (session.getAttribute("successMessage") != null) {
-                model.addAttribute("success", session.getAttribute("successMessage"));
-                session.removeAttribute("successMessage");
-            }
-            if (session.getAttribute("errorMessage") != null) {
-                model.addAttribute("error", session.getAttribute("errorMessage"));
-                session.removeAttribute("errorMessage");
-            }
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("Error loading student dashboard: " + e.getMessage());
-            model.addAttribute("error", "Error loading dashboard data.");
+            System.err.println("❌ Error registering unit: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to register unit"
+            ));
         }
-
-        return "student-dashboard";
     }
 
-    @GetMapping("/attendance")
-    public String showAttendanceDetails(HttpSession session, Model model) {
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId == null) {
-            return "redirect:/student/login";
-        }
+    /**
+     * REMOVE UNIT - For React frontend
+     */
+    @DeleteMapping("/{studentId}/units/{unitCode}")
+    public ResponseEntity<Map<String, Object>> removeUnit(
+            @PathVariable String studentId,
+            @PathVariable String unitCode) {
 
-        StudentData student = studentManager.getStudent(studentId);
-        if (student == null) {
-            return "redirect:/student/login";
-        }
-
-        Map<String, Map<String, Object>> attendanceSummary = new HashMap<>();
-        try {
-            java.lang.reflect.Method method = studentManager.getClass().getMethod("getAttendanceSummary", String.class);
-            Object result = method.invoke(studentManager, studentId);
-            if (result instanceof Map) {
-                attendanceSummary = (Map<String, Map<String, Object>>) result;
-            }
-        } catch (Exception e) {
-            System.err.println("getAttendanceSummary method not available");
-            attendanceSummary = createMockAttendanceSummary(student);
-        }
-
-        // Get overall statistics for attendance page
-        Map<String, Object> overallStats = new HashMap<>();
-        try {
-            java.lang.reflect.Method method = studentManager.getClass().getMethod("getOverallStatistics", String.class);
-            Object result = method.invoke(studentManager, studentId);
-            if (result instanceof Map) {
-                overallStats = (Map<String, Object>) result;
-            }
-        } catch (Exception e) {
-            System.err.println("getOverallStatistics method not available");
-            overallStats = createMockOverallStats(student);
-        }
-
-        // Ensure overallStats has the expected keys
-        if (!overallStats.containsKey("overallAttendanceRate")) {
-            overallStats.put("overallAttendanceRate", 0.0);
-        }
-        if (!overallStats.containsKey("totalSessions")) {
-            overallStats.put("totalSessions", 0);
-        }
-        if (!overallStats.containsKey("totalPresent")) {
-            overallStats.put("totalPresent", 0);
-        }
-
-        // Get units and courses safely
-        Map<String, Object> units = new HashMap<>();
-        Map<String, Object> courses = new HashMap<>();
+        System.out.println("📚 Removing unit " + unitCode + " from " + studentId);
 
         try {
-            if (hodManager != null) {
-                java.lang.reflect.Method getUnitManagerMethod = hodManager.getClass().getMethod("getUnitManager");
-                Object unitManager = getUnitManagerMethod.invoke(hodManager);
-                if (unitManager != null) {
-                    java.lang.reflect.Method getUnitsMethod = unitManager.getClass().getMethod("getUnits");
-                    Object unitsResult = getUnitsMethod.invoke(unitManager);
-                    if (unitsResult instanceof Map) {
-                        units = (Map<String, Object>) unitsResult;
-                    }
-                }
+            boolean removed = studentManager.removeUnitFromStudent(studentId, unitCode);
 
-                java.lang.reflect.Method getCourseManagerMethod = hodManager.getClass().getMethod("getCourseManager");
-                Object courseManager = getCourseManagerMethod.invoke(hodManager);
-                if (courseManager != null) {
-                    java.lang.reflect.Method getCoursesMethod = courseManager.getClass().getMethod("getCourses");
-                    Object coursesResult = getCoursesMethod.invoke(courseManager);
-                    if (coursesResult instanceof Map) {
-                        courses = (Map<String, Object>) coursesResult;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error getting units/courses: " + e.getMessage());
-        }
-
-        // Check for active attendance sessions
-        boolean canTakeAttendance = false;
-        String activeUnitCode = null;
-        if (student.getRegisteredUnits() != null && !student.getRegisteredUnits().isEmpty()) {
-            for (String unitCode : student.getRegisteredUnits()) {
-                try {
-                    java.lang.reflect.Method method = attendanceManager.getClass().getMethod("isAttendanceActive", String.class);
-                    boolean isActive = (Boolean) method.invoke(attendanceManager, unitCode);
-                    if (isActive) {
-                        canTakeAttendance = true;
-                        activeUnitCode = unitCode;
-                        break;
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error checking attendance for unit " + unitCode);
-                }
-            }
-        }
-
-        model.addAttribute("student", student);
-        model.addAttribute("attendanceSummary", attendanceSummary);
-        model.addAttribute("overallStats", overallStats);
-        model.addAttribute("units", units);
-        model.addAttribute("courses", courses);
-        model.addAttribute("canTakeAttendance", canTakeAttendance);
-        model.addAttribute("activeUnitCode", activeUnitCode);
-
-        return "student-attendance";
-    }
-
-    @GetMapping("/profile")
-    public String showStudentProfile(HttpSession session, Model model) {
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId == null) {
-            return "redirect:/student/login";
-        }
-
-        StudentData student = studentManager.getStudent(studentId);
-        if (student == null) {
-            return "redirect:/student/login";
-        }
-
-        model.addAttribute("student", student);
-        return "student-profile";
-    }
-
-    // ========== ATTENDANCE METHODS ==========
-
-    @PostMapping("/take-attendance")
-    public String takeAttendance(HttpSession session, Model model) {
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId == null) {
-            return "redirect:/student/login";
-        }
-
-        StudentData student = studentManager.getStudent(studentId);
-        if (student == null) {
-            return "redirect:/student/login";
-        }
-
-        // Find active unit for this student
-        String activeUnitCode = null;
-        if (student.getRegisteredUnits() != null) {
-            for (String unitCode : student.getRegisteredUnits()) {
-                try {
-                    java.lang.reflect.Method method = attendanceManager.getClass().getMethod("isAttendanceActive", String.class);
-                    boolean isActive = (Boolean) method.invoke(attendanceManager, unitCode);
-                    if (isActive) {
-                        activeUnitCode = unitCode;
-                        break;
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error checking attendance for unit " + unitCode);
-                }
-            }
-        }
-
-        if (activeUnitCode == null) {
-            session.setAttribute("errorMessage", "No active attendance session found for your registered units.");
-            return "redirect:/student/dashboard";
-        }
-
-        // Mark attendance
-        boolean success = false;
-        try {
-            // Try different method signatures
-            try {
-                java.lang.reflect.Method method = attendanceManager.getClass().getMethod("markStudentPresent",
-                        String.class, String.class);
-                success = (Boolean) method.invoke(attendanceManager, studentId, activeUnitCode);
-            } catch (NoSuchMethodException e) {
-                try {
-                    java.lang.reflect.Method method = attendanceManager.getClass().getMethod("recordAttendance",
-                            String.class, String.class, String.class);
-                    method.invoke(attendanceManager, studentId, activeUnitCode, "PRESENT");
-                    success = true;
-                } catch (NoSuchMethodException e2) {
-                    session.setAttribute("errorMessage", "Attendance system temporarily unavailable.");
-                    return "redirect:/student/dashboard";
-                }
-            }
-
-            if (success) {
-                session.setAttribute("successMessage", "Attendance marked successfully for " + activeUnitCode + "!");
-                System.out.println("Student " + studentId + " marked present for " + activeUnitCode);
+            Map<String, Object> response = new HashMap<>();
+            if (removed) {
+                response.put("success", true);
+                response.put("message", "Unit removed successfully");
+                System.out.println("✅ Unit removed: " + unitCode + " from " + studentId);
             } else {
-                session.setAttribute("errorMessage", "Failed to mark attendance. Please try again.");
+                response.put("success", false);
+                response.put("message", "Failed to remove unit");
+                System.out.println("❌ Unit removal failed: " + unitCode + " from " + studentId);
             }
+
+            return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            System.err.println("Error marking attendance: " + e.getMessage());
-            session.setAttribute("errorMessage", "Error marking attendance: " + e.getMessage());
+            System.err.println("❌ Error removing unit: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Failed to remove unit"
+            ));
         }
-
-        return "redirect:/student/dashboard";
     }
 
-    // ========== COURSE REGISTRATION ==========
+    // ========== HEALTH CHECK ==========
 
-    @PostMapping("/register-course")
-    public String registerCourse(
-            @RequestParam String courseCode,
-            HttpSession session,
-            Model model) {
+    /**
+     * HEALTH CHECK - For React frontend
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Student API is running");
+        response.put("timestamp", java.time.LocalDateTime.now().toString());
+        response.put("studentCount", studentManager.getTotalStudentCount());
 
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId == null) {
-            return "redirect:/student/login";
-        }
-
-        StudentData student = studentManager.getStudent(studentId);
-        if (student == null) {
-            return "redirect:/student/login";
-        }
-
-        if (courseCode == null || courseCode.trim().isEmpty()) {
-            session.setAttribute("errorMessage", "Course code is required.");
-            return "redirect:/student/dashboard";
-        }
-
-        courseCode = courseCode.trim();
-
-        if (student.getCourse() != null && !student.getCourse().isEmpty()) {
-            session.setAttribute("errorMessage", "You are already registered for course: " + student.getCourse());
-        } else {
-            // registerCourse returns void, so we check if it worked by verifying the course was set
-            student.registerCourse(courseCode);
-
-            // Verify the course was registered
-            if (courseCode.equals(student.getCourse())) {
-                studentManager.saveStudentsToFile();
-                session.setAttribute("successMessage", "Successfully registered for course: " + courseCode);
-                System.out.println("Student " + studentId + " registered for course: " + courseCode);
-            } else {
-                session.setAttribute("errorMessage", "Failed to register for course: " + courseCode);
-            }
-        }
-
-        return "redirect:/student/dashboard";
+        return ResponseEntity.ok(response);
     }
 
-    // ========== UNIT REGISTRATION ==========
+    /**
+     * NEW: Email validation endpoint for testing
+     */
+    @PostMapping("/validate-email")
+    public ResponseEntity<Map<String, Object>> validateEmail(@RequestBody Map<String, String> emailData) {
+        String email = emailData.get("email");
 
-    @PostMapping("/register-unit")
-    public String registerUnit(
-            @RequestParam String unitCode,
-            HttpSession session,
-            Model model) {
-
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId == null) {
-            return "redirect:/student/login";
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Email is required"
+            ));
         }
 
-        StudentData student = studentManager.getStudent(studentId);
-        if (student == null) {
-            return "redirect:/student/login";
-        }
+        Map<String, Object> validationResult = emailService.validateEmailWithDetails(email);
+        validationResult.put("success", true);
 
-        if (unitCode == null || unitCode.trim().isEmpty()) {
-            session.setAttribute("errorMessage", "Unit code is required.");
-            return "redirect:/student/dashboard";
-        }
-
-        unitCode = unitCode.trim();
-
-        // registerUnit returns void, so we check if it worked by verifying the unit was added
-        student.registerUnit(unitCode);
-
-        // Check if unit was successfully registered
-        boolean registered = student.getRegisteredUnits() != null &&
-                student.getRegisteredUnits().contains(unitCode);
-
-        if (registered) {
-            studentManager.saveStudentsToFile();
-            session.setAttribute("successMessage", "Successfully registered for unit: " + unitCode);
-            System.out.println("Student " + studentId + " registered for unit: " + unitCode);
-        } else {
-            session.setAttribute("errorMessage", "Failed to register for unit: " + unitCode +
-                    ". You may have reached the maximum units or already registered.");
-        }
-
-        return "redirect:/student/dashboard";
-    }
-
-    // ========== LOGOUT ==========
-
-    @GetMapping("/logout")
-    public String logout(HttpSession session) {
-        session.invalidate();
-        return "redirect:/student/login";
-    }
-
-    // ========== HELPER METHODS ==========
-
-    private Map<String, Map<String, Object>> createMockAttendanceSummary(StudentData student) {
-        Map<String, Map<String, Object>> summary = new HashMap<>();
-
-        if (student.getRegisteredUnits() != null) {
-            for (String unitCode : student.getRegisteredUnits()) {
-                Map<String, Object> unitStats = new HashMap<>();
-                unitStats.put("present", 8);
-                unitStats.put("absent", 2);
-                unitStats.put("total", 10);
-                unitStats.put("attendanceRate", 80.0);
-                summary.put(unitCode, unitStats);
-            }
-        }
-
-        return summary;
-    }
-
-    private Map<String, Object> createMockOverallStats(StudentData student) {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalPresent", 25);
-        stats.put("totalAbsent", 5);
-        stats.put("totalSessions", 30);
-        stats.put("overallAttendanceRate", 83.3);
-        return stats;
+        return ResponseEntity.ok(validationResult);
     }
 }

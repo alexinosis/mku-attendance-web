@@ -1,0 +1,42 @@
+{
+  "QQ" : {
+    "name" : "CYBER SECURITY",
+    "email" : "emmanuelmae264@gmail.com",
+    "lecturerId" : "QQ",
+    "password" : "123456",
+    "courseCode" : "CS",
+    "unitCode" : "CR/T/6A"
+  },
+  "1" : {
+    "name" : "chai",
+    "email" : "emmanuelmae264@gmail.com",
+    "lecturerId" : "1",
+    "password" : "1",
+    "courseCode" : "CS",
+    "unitCode" : "CR/T/6A"
+  },
+  "12" : {
+    "name" : "chai",
+    "email" : "sykesalex264fg@gmail.com",
+    "lecturerId" : "12",
+    "password" : "12345678",
+    "courseCode" : "CS",
+    "unitCode" : "CR/T/6A"
+  },
+  "111" : {
+    "name" : "CYBER SECURITY",
+    "email" : "sykesalex264@gmail.com",
+    "lecturerId" : "111",
+    "password" : "qwertyuiop",
+    "courseCode" : "CS",
+    "unitCode" : "CR/T/6A"
+  },
+  "11F" : {
+    "name" : "ICT",
+    "email" : "sykesalex264gh@gmail.com",
+    "lecturerId" : "11F",
+    "password" : "mojiguihhjh",
+    "courseCode" : "CS",
+    "unitCode" : "CR/T/6A"
+  }
+}

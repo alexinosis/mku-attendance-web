@@ -21,9 +21,12 @@
         .btn-secondary:hover { background: #545b62; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
         .msg { padding: 12px; margin: 15px 0; border-radius: 5px; font-weight: bold; }
         .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .stats { display: flex; justify-content: space-around; margin: 20px 0; flex-wrap: wrap; }
         .stat { text-align: center; padding: 10px; min-width: 120px; }
         .stat h3 { color: #FF8C00; font-size: 24px; margin-bottom: 5px; }
@@ -32,9 +35,54 @@
         .logout a:hover { text-decoration: underline; }
         .tab { display: none; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-top: 20px; }
         .tab.active { display: block; }
-        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab-nav button { padding: 10px 15px; background: #eee; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
-        .tab-nav button.active { background: #FF8C00; color: white; }
+
+        /* UPDATED TAB NAVIGATION - COLORFUL AND HIGHLY VISIBLE */
+        .tab-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+        .tab-nav button {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            min-width: 140px;
+        }
+        .tab-nav button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .tab-nav button.active {
+            background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 140, 0, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Individual tab colors for better distinction */
+        .tab-nav button:nth-child(1) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); } /* Add Course */
+        .tab-nav button:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); } /* Add Unit */
+        .tab-nav button:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); } /* Add HOD */
+        .tab-nav button:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); } /* Add Lecturer */
+        .tab-nav button:nth-child(5) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); } /* View Courses */
+        .tab-nav button:nth-child(6) { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; } /* View Units */
+        .tab-nav button:nth-child(7) { background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%); color: #333; } /* View HODs */
+        .tab-nav button:nth-child(8) { background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%); } /* View Lecturers */
+        .tab-nav button:nth-child(9) { background: linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%); } /* View Students */
+        .tab-nav button:nth-child(10) { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #333; } /* Attendance Reports */
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background: #f8f9fa; font-weight: 600; }
@@ -44,10 +92,53 @@
         .status-present { color: #28a745; font-weight: bold; }
         .status-absent { color: #dc3545; font-weight: bold; }
         .action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+
+        /* NEW: Modal Styles for Edit HOD */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        .edit-hod-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px dashed #FF8C00;
+        }
+
         @media (max-width: 768px) {
             .dashboard { grid-template-columns: 1fr; }
             .filter-row { flex-direction: column; }
             .filter-group { min-width: 100%; }
+            .modal-content { margin: 10% auto; width: 95%; }
+            .tab-nav { flex-direction: column; }
+            .tab-nav button { width: 100%; min-width: auto; }
         }
     </style>
 </head>
@@ -62,6 +153,13 @@
     <!-- MESSAGES -->
     <div th:if="${param.success}" class="msg success" th:text="${param.success}"></div>
     <div th:if="${param.error}" class="msg error" th:text="${param.error}"></div>
+
+    <!-- EDIT HOD SECTION -->
+    <div class="edit-hod-section">
+        <h3>🔧 Manage Your Account</h3>
+        <p>Update your personal details and password</p>
+        <button onclick="openEditHODModal()" class="btn-secondary">Edit My Details</button>
+    </div>
 
     <!-- STATS -->
     <div class="stats">
@@ -100,6 +198,7 @@
         <!-- NEW TABS -->
         <button onclick="showTab('view-students')">View Students</button>
         <button onclick="showTab('attendance-reports')">Attendance Reports</button>
+        <!-- REMOVED: LECTURER PASSWORD RESET TAB - Security Risk -->
     </div>
 
     <!-- MAIN DASHBOARD GRID -->
@@ -158,7 +257,8 @@
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" name="email">
+                    <input type="email" name="email" placeholder="Enter valid email address">
+                    <small style="color: #666; font-size: 12px;">Must be a valid, deliverable email address</small>
                 </div>
                 <div class="form-group">
                     <label>Department</label>
@@ -166,7 +266,8 @@
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" name="password" required>
+                    <input type="password" name="password" required minlength="6">
+                    <small style="color: #666; font-size: 12px;">Minimum 6 characters</small>
                 </div>
                 <button type="submit">Add HOD</button>
             </form>
@@ -183,7 +284,8 @@
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" name="email" required>
+                    <input type="email" name="email" required placeholder="Enter valid email address">
+                    <small style="color: #666; font-size: 12px;">Must be a valid, deliverable email address</small>
                 </div>
                 <div class="form-group">
                     <label>Lecturer ID</label>
@@ -191,7 +293,8 @@
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" name="password" required>
+                    <input type="password" name="password" required minlength="6">
+                    <small style="color: #666; font-size: 12px;">Minimum 6 characters</small>
                 </div>
                 <div class="form-group">
                     <label>Course Code</label>
@@ -368,12 +471,52 @@
             </div>
         </div>
 
+        <!-- REMOVED: LECTURER PASSWORD RESET TAB - Security Risk -->
+
     </div>
 
     <!-- LOGOUT -->
     <div class="logout">
         <a href="/">Back to Home</a> |
         <a href="/hod/login">Logout</a>
+    </div>
+</div>
+
+<!-- EDIT HOD MODAL -->
+<div id="editHODModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditHODModal()">&times;</span>
+        <h2>Edit HOD Details</h2>
+        <form th:action="@{/hod/edit-hod}" method="post">
+            <input type="hidden" name="hodId" th:value="${hod.id}">
+            <div class="form-group">
+                <label>HOD ID</label>
+                <input type="text" th:value="${hod.id}" readonly style="background: #f5f5f5; cursor: not-allowed;">
+                <small style="color: #666; font-size: 12px;">HOD ID cannot be changed</small>
+            </div>
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" name="name" th:value="${hod.name}" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" th:value="${hod.email}" placeholder="Enter email address">
+                <small style="color: #666; font-size: 12px;">Must be a valid, deliverable email address</small>
+            </div>
+            <div class="form-group">
+                <label>Department</label>
+                <input type="text" name="department" th:value="${hod.department}" placeholder="Enter department">
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" name="password" placeholder="Leave blank to keep current password" minlength="6">
+                <small style="color: #666; font-size: 12px;">Minimum 6 characters. Leave blank to keep current password.</small>
+            </div>
+            <div class="action-buttons">
+                <button type="submit" class="btn-success">Update Details</button>
+                <button type="button" class="btn-secondary" onclick="closeEditHODModal()">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -503,9 +646,58 @@
         else if (tabName === 'lecturers') viewLecturers();
     }
 
-    // Load courses on page load
+    // Edit HOD Modal Functions
+    function openEditHODModal() {
+        document.getElementById('editHODModal').style.display = 'block';
+    }
+
+    function closeEditHODModal() {
+        document.getElementById('editHODModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('editHODModal');
+        if (event.target === modal) {
+            closeEditHODModal();
+        }
+    }
+
+    // Enhanced form validation
+    function validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // Add email validation to forms
     document.addEventListener('DOMContentLoaded', function() {
         loadCourses();
+
+        // Add email validation to HOD form
+        const hodEmailInput = document.querySelector('#add-hod input[name="email"]');
+        if (hodEmailInput) {
+            hodEmailInput.addEventListener('blur', function() {
+                if (this.value && !validateEmail(this.value)) {
+                    this.style.borderColor = '#dc3545';
+                } else {
+                    this.style.borderColor = '#ddd';
+                }
+            });
+        }
+
+        // Add email validation to Lecturer form
+        const lecturerEmailInput = document.querySelector('#add-lecturer input[name="email"]');
+        if (lecturerEmailInput) {
+            lecturerEmailInput.addEventListener('blur', function() {
+                if (this.value && !validateEmail(this.value)) {
+                    this.style.borderColor = '#dc3545';
+                } else {
+                    this.style.borderColor = '#ddd';
+                }
+            });
+        }
+
+        // Add course change listener for unit loading
         document.querySelector('#add-lecturer select[name="courseCode"]').addEventListener('change', function() {
             loadUnits(this.value, '#add-lecturer select[name="unitCode"]');
         });

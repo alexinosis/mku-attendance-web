@@ -145,8 +145,8 @@
     <header>
         <h1>MKU Lecturer Portal</h1>
         <p>Welcome, <strong th:text="${lecturer.name}">Lecturer Name</strong> |
-            Unit: <span th:text="${lecturer.unitCode}"></span> |
-            Course: <span th:text="${lecturer.courseCode}"></span></p>
+            Unit: <span th:text="${lecturer.unitCode} ?: 'Not Assigned'">Unit Code</span> |
+            Course: <span th:text="${lecturer.courseCode} ?: 'Not Assigned'">Course Code</span></p>
     </header>
 
     <!-- MESSAGES -->
@@ -157,11 +157,12 @@
     <div class="attendance-control">
         <div class="card-header">
             <h5 class="mb-0">
-                <i class="fas fa-clock me-2"></i>Attendance Control - <span th:text="${lecturer.unitCode}"></span>
+                <i class="fas fa-clock me-2"></i>Attendance Control - <span th:text="${lecturer.unitCode} ?: 'No Unit Assigned'"></span>
             </h5>
         </div>
         <div class="attendance-status">
-            <div th:if="${isAttendanceActive}">
+            <!-- FIXED: Added null safety check for isAttendanceActive -->
+            <div th:if="${isAttendanceActive != null and isAttendanceActive}">
                 <span class="badge bg-success">
                     <i class="fas fa-play-circle me-1"></i>Attendance Active - Students can mark
                 </span>
@@ -169,7 +170,8 @@
                     <i class="fas fa-hourglass-half me-1"></i>Time left: <span id="timeDisplay">--:--</span>
                 </span>
             </div>
-            <div th:unless="${isAttendanceActive}">
+            <!-- FIXED: Added null safety check for isAttendanceActive -->
+            <div th:unless="${isAttendanceActive != null and isAttendanceActive}">
                 <span class="badge bg-secondary">
                     <i class="fas fa-stop-circle me-1"></i>Attendance Not Active
                 </span>
@@ -177,13 +179,18 @@
         </div>
 
         <div class="attendance-buttons">
-            <form th:action="@{/lecturer/start-attendance}" method="post" th:if="${!isAttendanceActive}">
-                <button type="submit" class="btn btn-success">
+            <!-- FIXED: Added null safety check for isAttendanceActive -->
+            <form th:action="@{/lecturer/start-attendance}" method="post" th:if="${!(isAttendanceActive != null and isAttendanceActive)}">
+                <button type="submit" class="btn btn-success" th:disabled="${lecturer.unitCode == null or lecturer.unitCode.isEmpty()}">
                     <i class="fas fa-play me-1"></i>Start Attendance (60 min)
                 </button>
+                <small th:if="${lecturer.unitCode == null or lecturer.unitCode.isEmpty()}" style="display: block; color: #dc3545; margin-top: 5px;">
+                    <i class="fas fa-exclamation-triangle"></i> No unit assigned. Please contact HOD.
+                </small>
             </form>
 
-            <form th:action="@{/lecturer/stop-attendance}" method="post" th:if="${isAttendanceActive}">
+            <!-- FIXED: Added null safety check for isAttendanceActive -->
+            <form th:action="@{/lecturer/stop-attendance}" method="post" th:if="${isAttendanceActive != null and isAttendanceActive}">
                 <button type="submit" class="btn btn-danger">
                     <i class="fas fa-stop me-1"></i>Stop Attendance & Auto-Mark Absent
                 </button>
@@ -198,7 +205,8 @@
             </a>
         </div>
 
-        <div th:if="${isAttendanceActive}" style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 5px;">
+        <!-- FIXED: Added null safety check for isAttendanceActive -->
+        <div th:if="${isAttendanceActive != null and isAttendanceActive}" style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 5px;">
             <small>
                 <i class="fas fa-info-circle me-1"></i>
                 <strong>Active Session:</strong> Students can now mark attendance by ticking the box.
@@ -213,13 +221,21 @@
         <button onclick="showTab('view-reports')">View Reports</button>
         <button onclick="showTab('view-attendance-records')">Attendance Records</button>
         <button onclick="showTab('unit-students')">Unit Students</button>
+        <button onclick="showTab('lecturer-units')">My Units</button>
     </div>
 
     <!-- TAKE ATTENDANCE TAB -->
     <div id="take-attendance" class="tab active">
         <div class="card">
-            <h3>Take Attendance - <span th:text="${lecturer.unitCode}"></span></h3>
+            <h3>Take Attendance - <span th:text="${lecturer.unitCode} ?: 'No Unit Assigned'"></span></h3>
             <p>Monitor and manage student attendance in real-time.</p>
+
+            <!-- FIXED: Show message if no unit assigned -->
+            <div th:if="${lecturer.unitCode == null or lecturer.unitCode.isEmpty()}" style="text-align: center; padding: 40px; color: #dc3545;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h4>No Unit Assigned</h4>
+                <p>You don't have any units assigned to you. Please contact your HOD to get assigned to a unit.</p>
+            </div>
 
             <div th:if="${unitStudents != null and !unitStudents.empty}">
                 <!-- Today's attendance summary -->
@@ -230,11 +246,11 @@
                             <div class="stat-label">Present Today</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" th:text="${totalStudents - presentToday}">0</div>
+                            <div class="stat-number" th:text="${(totalStudents ?: 0) - (presentToday ?: 0)}">0</div>
                             <div class="stat-label">Absent Today</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" th:text="${totalStudents}">0</div>
+                            <div class="stat-number" th:text="${totalStudents ?: 0}">0</div>
                             <div class="stat-label">Total Students</div>
                         </div>
                     </div>
@@ -319,89 +335,98 @@
     <!-- VIEW REPORTS TAB -->
     <div id="view-reports" class="tab">
         <div class="card">
-            <h3>Attendance Reports - <span th:text="${lecturer.unitCode}"></span></h3>
+            <h3>Attendance Reports - <span th:text="${lecturer.unitCode} ?: 'No Unit Assigned'"></span></h3>
             <p>View and filter attendance reports for your unit.</p>
 
-            <!-- Overall Statistics -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number" th:text="${totalRecords ?: 0}">0</div>
-                    <div class="stat-label">Total Records</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" style="color: #27ae60;" th:text="${presentCount ?: 0}">0</div>
-                    <div class="stat-label">Present</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" style="color: #e74c3c;" th:text="${absentCount ?: 0}">0</div>
-                    <div class="stat-label">Absent</div>
-                </div>
-                <div class="stat-card">
-                    <!-- FIXED: Proper numeric comparison with Double attendanceRate -->
-                    <div class="stat-number"
-                         th:style="${(attendanceRate ?: 0) >= 75} ? 'color: #27ae60;' : ((${(attendanceRate ?: 0) >= 50}) ? 'color: #f39c12;' : 'color: #e74c3c;')"
-                         th:text="${#numbers.formatDecimal(attendanceRate ?: 0, 1, 1)} + '%'">0%</div>
-                    <div class="stat-label">Attendance Rate</div>
-                </div>
+            <!-- FIXED: Show message if no unit assigned -->
+            <div th:if="${lecturer.unitCode == null or lecturer.unitCode.isEmpty()}" style="text-align: center; padding: 40px; color: #dc3545;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h4>No Unit Assigned</h4>
+                <p>You don't have any units assigned to you. Please contact your HOD to get assigned to a unit.</p>
             </div>
 
-            <!-- Filter Section -->
-            <div class="filter-section">
-                <h4>Filter Reports</h4>
-                <form th:action="@{/lecturer/reports}" method="get">
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="admissionNo">Admission Number:</label>
-                            <input type="text" id="admissionNo" name="admissionNo"
-                                   th:value="${admissionNoFilter}" placeholder="Enter admission number">
-                        </div>
-                        <div class="filter-group">
-                            <label for="studentName">Student Name:</label>
-                            <input type="text" id="studentName" name="studentName"
-                                   th:value="${studentNameFilter}" placeholder="Enter student name">
-                        </div>
-                        <div class="filter-group">
-                            <button type="submit" style="margin-top: 0;">Apply Filters</button>
-                            <a th:href="@{/lecturer/reports}"
-                               style="display: block; text-align: center; padding: 10px; background: #95a5a6; color: white; text-decoration: none; border-radius: 5px; margin-top: 5px;">
-                                Clear Filters
-                            </a>
-                        </div>
+            <div th:if="${lecturer.unitCode != null and !lecturer.unitCode.isEmpty()}">
+                <!-- Overall Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${totalRecords ?: 0}">0</div>
+                        <div class="stat-label">Total Records</div>
                     </div>
-                </form>
-            </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: #27ae60;" th:text="${presentCount ?: 0}">0</div>
+                        <div class="stat-label">Present</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: #e74c3c;" th:text="${absentCount ?: 0}">0</div>
+                        <div class="stat-label">Absent</div>
+                    </div>
+                    <div class="stat-card">
+                        <!-- FIXED: Proper numeric comparison with Double attendanceRate -->
+                        <div class="stat-number"
+                             th:style="${(attendanceRate ?: 0) >= 75} ? 'color: #27ae60;' : ((${(attendanceRate ?: 0) >= 50}) ? 'color: #f39c12;' : 'color: #e74c3c;')"
+                             th:text="${#numbers.formatDecimal(attendanceRate ?: 0, 1, 1)} + '%'">0%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                </div>
 
-            <!-- Reports Table -->
-            <div th:if="${filteredStudents != null and !filteredStudents.empty}">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>Student ID</th>
-                        <th>Name</th>
-                        <th>Course</th>
-                        <th>Status</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="student : ${filteredStudents}">
-                        <td th:text="${student.studentId}"></td>
-                        <td th:text="${student.firstName + ' ' + student.lastName}"></td>
-                        <td th:text="${student.course}"></td>
-                        <td>
-                            <span class="status-approved">Registered</span>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+                <!-- Filter Section -->
+                <div class="filter-section">
+                    <h4>Filter Reports</h4>
+                    <form th:action="@{/lecturer/reports}" method="get">
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label for="admissionNo">Admission Number:</label>
+                                <input type="text" id="admissionNo" name="admissionNo"
+                                       th:value="${admissionNoFilter}" placeholder="Enter admission number">
+                            </div>
+                            <div class="filter-group">
+                                <label for="studentName">Student Name:</label>
+                                <input type="text" id="studentName" name="studentName"
+                                       th:value="${studentNameFilter}" placeholder="Enter student name">
+                            </div>
+                            <div class="filter-group">
+                                <button type="submit" style="margin-top: 0;">Apply Filters</button>
+                                <a th:href="@{/lecturer/reports}"
+                                   style="display: block; text-align: center; padding: 10px; background: #95a5a6; color: white; text-decoration: none; border-radius: 5px; margin-top: 5px;">
+                                    Clear Filters
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
 
-            <div th:if="${filteredStudents == null or filteredStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
-                <p th:if="${admissionNoFilter != null or studentNameFilter != null}">
-                    No students found matching your filters.
-                </p>
-                <p th:unless="${admissionNoFilter != null or studentNameFilter != null}">
-                    No students registered for this unit yet.
-                </p>
+                <!-- Reports Table -->
+                <div th:if="${filteredStudents != null and !filteredStudents.empty}">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Course</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="student : ${filteredStudents}">
+                            <td th:text="${student.studentId}"></td>
+                            <td th:text="${student.firstName + ' ' + student.lastName}"></td>
+                            <td th:text="${student.course}"></td>
+                            <td>
+                                <span class="status-approved">Registered</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${filteredStudents == null or filteredStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                    <p th:if="${admissionNoFilter != null or studentNameFilter != null}">
+                        No students found matching your filters.
+                    </p>
+                    <p th:unless="${admissionNoFilter != null or studentNameFilter != null}">
+                        No students registered for this unit yet.
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -409,54 +434,63 @@
     <!-- VIEW ATTENDANCE RECORDS TAB -->
     <div id="view-attendance-records" class="tab">
         <div class="card">
-            <h3>Attendance Records - <span th:text="${lecturer.unitCode}"></span></h3>
+            <h3>Attendance Records - <span th:text="${lecturer.unitCode} ?: 'No Unit Assigned'"></span></h3>
             <p>Detailed attendance records for all students.</p>
 
-            <div th:if="${attendanceRecords != null and !attendanceRecords.empty}">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" th:text="${attendanceRecords.size()}">0</div>
-                        <div class="stat-label">Total Records</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" style="color: #27ae60;"
-                             th:text="${#lists.size(attendanceRecords.?[status == 'PRESENT'])}">0</div>
-                        <div class="stat-label">Present Records</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" style="color: #e74c3c;"
-                             th:text="${#lists.size(attendanceRecords.?[status == 'ABSENT'])}">0</div>
-                        <div class="stat-label">Absent Records</div>
-                    </div>
-                </div>
-
-                <table style="margin-top: 20px;">
-                    <thead>
-                    <tr>
-                        <th>Date & Time</th>
-                        <th>Student ID</th>
-                        <th>Student Name</th>
-                        <th>Status</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="record : ${attendanceRecords}">
-                        <td th:text="${record.date}"></td>
-                        <td th:text="${record.studentId}"></td>
-                        <td>
-                            <span th:text="${record.studentName}">Student Name</span>
-                        </td>
-                        <td>
-                            <span th:if="${record.status == 'PRESENT'}" class="status-present">PRESENT</span>
-                            <span th:if="${record.status == 'ABSENT'}" class="status-absent">ABSENT</span>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+            <!-- FIXED: Show message if no unit assigned -->
+            <div th:if="${lecturer.unitCode == null or lecturer.unitCode.isEmpty()}" style="text-align: center; padding: 40px; color: #dc3545;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h4>No Unit Assigned</h4>
+                <p>You don't have any units assigned to you. Please contact your HOD to get assigned to a unit.</p>
             </div>
 
-            <div th:if="${attendanceRecords == null or attendanceRecords.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
-                <p>No attendance records found for this unit.</p>
+            <div th:if="${lecturer.unitCode != null and !lecturer.unitCode.isEmpty()}">
+                <div th:if="${attendanceRecords != null and !attendanceRecords.empty}">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${attendanceRecords.size()}">0</div>
+                            <div class="stat-label">Total Records</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #27ae60;"
+                                 th:text="${#lists.size(attendanceRecords.?[status == 'PRESENT'])}">0</div>
+                            <div class="stat-label">Present Records</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #e74c3c;"
+                                 th:text="${#lists.size(attendanceRecords.?[status == 'ABSENT'])}">0</div>
+                            <div class="stat-label">Absent Records</div>
+                        </div>
+                    </div>
+
+                    <table style="margin-top: 20px;">
+                        <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Student ID</th>
+                            <th>Student Name</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="record : ${attendanceRecords}">
+                            <td th:text="${record.date}"></td>
+                            <td th:text="${record.studentId}"></td>
+                            <td>
+                                <span th:text="${record.studentName}">Student Name</span>
+                            </td>
+                            <td>
+                                <span th:if="${record.status == 'PRESENT'}" class="status-present">PRESENT</span>
+                                <span th:if="${record.status == 'ABSENT'}" class="status-absent">ABSENT</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${attendanceRecords == null or attendanceRecords.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                    <p>No attendance records found for this unit.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -464,53 +498,110 @@
     <!-- UNIT STUDENTS TAB -->
     <div id="unit-students" class="tab">
         <div class="card">
-            <h3>Students in <span th:text="${lecturer.unitCode}"></span></h3>
+            <h3>Students in <span th:text="${lecturer.unitCode} ?: 'No Unit Assigned'"></span></h3>
             <p>List of all students registered for your unit.</p>
 
-            <div th:if="${unitStudents != null and !unitStudents.empty}">
-                <!-- Statistics -->
+            <!-- FIXED: Show message if no unit assigned -->
+            <div th:if="${lecturer.unitCode == null or lecturer.unitCode.isEmpty()}" style="text-align: center; padding: 40px; color: #dc3545;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h4>No Unit Assigned</h4>
+                <p>You don't have any units assigned to you. Please contact your HOD to get assigned to a unit.</p>
+            </div>
+
+            <div th:if="${lecturer.unitCode != null and !lecturer.unitCode.isEmpty()}">
+                <div th:if="${unitStudents != null and !unitStudents.empty}">
+                    <!-- Statistics -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${unitStudents.size()}">0</div>
+                            <div class="stat-label">Total Students</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${unitStudents.size()}">0</div>
+                            <div class="stat-label">Registered</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" th:text="${presentToday ?: 0}">0</div>
+                            <div class="stat-label">With Attendance Today</div>
+                        </div>
+                    </div>
+
+                    <!-- Students Table -->
+                    <table style="margin-top: 20px;">
+                        <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Course</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="student : ${unitStudents}">
+                            <td th:text="${student.studentId}"></td>
+                            <td th:text="${student.firstName + ' ' + student.lastName}"></td>
+                            <td th:text="${student.email}"></td>
+                            <td th:text="${student.course}"></td>
+                            <td>
+                                <span class="status-approved">Registered</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${unitStudents == null or unitStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                    <p>No students registered for this unit yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LECTURER UNITS TAB -->
+    <div id="lecturer-units" class="tab">
+        <div class="card">
+            <h3>My Assigned Units</h3>
+            <p>Units assigned to you for teaching.</p>
+
+            <div th:if="${units != null and !units.empty}">
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-number" th:text="${unitStudents.size()}">0</div>
-                        <div class="stat-label">Total Students</div>
+                        <div class="stat-number" th:text="${totalUnits ?: 0}">0</div>
+                        <div class="stat-label">Total Units</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number" th:text="${unitStudents.size()}">0</div>
-                        <div class="stat-label">Registered</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" th:text="${presentToday ?: 0}">0</div>
-                        <div class="stat-label">With Attendance Today</div>
+                        <div class="stat-number" th:text="${lecturer.unitCode != null ? 1 : 0}">0</div>
+                        <div class="stat-label">Current Unit</div>
                     </div>
                 </div>
 
-                <!-- Students Table -->
                 <table style="margin-top: 20px;">
                     <thead>
                     <tr>
-                        <th>Student ID</th>
-                        <th>Name</th>
-                        <th>Email</th>
+                        <th>Unit Code</th>
+                        <th>Unit Name</th>
                         <th>Course</th>
                         <th>Status</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="student : ${unitStudents}">
-                        <td th:text="${student.studentId}"></td>
-                        <td th:text="${student.firstName + ' ' + student.lastName}"></td>
-                        <td th:text="${student.email}"></td>
-                        <td th:text="${student.course}"></td>
+                    <tr th:each="unit : ${units}">
+                        <td th:text="${unit.code}"></td>
+                        <td th:text="${unit.name}"></td>
+                        <td th:text="${unit.courseCode}"></td>
                         <td>
-                            <span class="status-approved">Registered</span>
+                            <span th:if="${unit.code == lecturer.unitCode}" class="status-present">ACTIVE</span>
+                            <span th:if="${unit.code != lecturer.unitCode}" class="status-pending">ASSIGNED</span>
                         </td>
                     </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div th:if="${unitStudents == null or unitStudents.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
-                <p>No students registered for this unit yet.</p>
+            <div th:if="${units == null or units.empty}" style="text-align: center; padding: 40px; color: #6c757d;">
+                <p>No units assigned to you yet.</p>
+                <p style="margin-top: 10px;">Please contact your HOD to get assigned to teaching units.</p>
             </div>
         </div>
     </div>
@@ -543,6 +634,10 @@
     // Auto-show reports tab if flag is set
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Lecturer dashboard loaded successfully');
+
+        // Safety check for Thymeleaf variables
+        const unitCode = document.querySelector('header span')?.textContent;
+        console.log('Current unit:', unitCode);
 
         // Check if we should show a specific tab
         if (window.location.hash) {

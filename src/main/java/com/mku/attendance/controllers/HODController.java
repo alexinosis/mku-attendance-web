@@ -4,6 +4,7 @@ import com.mku.attendance.entities.*;
 import com.mku.attendance.services.HODManager;
 import com.mku.attendance.services.StudentManager;
 import com.mku.attendance.services.AttendanceManager;
+import com.mku.attendance.services.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,6 +26,13 @@ public class HODController {
 
     @Autowired
     private AttendanceManager attendanceManager;
+
+    @Autowired
+    private EmailService emailService;
+
+    // Store OTPs temporarily (in production, use Redis or database)
+    private Map<String, String> hodOTPs = new HashMap<>();
+    private Map<String, Long> hodOTPExpiry = new HashMap<>();
 
     @GetMapping("/hod/login")
     public String showHODLogin() {
@@ -58,6 +66,241 @@ public class HODController {
         }
 
         return "redirect:/hod/dashboard?hodId=" + hodId.trim();
+    }
+
+    // ========== HOD PASSWORD RESET ENDPOINTS (SELF-SERVICE ONLY) ==========
+
+    @GetMapping("/hod/forgot-password")
+    public String showHODForgotPassword() {
+        return "hod-forgot-password";
+    }
+
+    @PostMapping("/hod/forgot-password")
+    public String processHODForgotPassword(
+            @RequestParam String hodId,
+            @RequestParam String email,
+            Model model) {
+
+        System.out.println("🔑 HOD Password reset requested for: " + hodId + ", email: " + email);
+
+        if (hodId == null || hodId.trim().isEmpty()) {
+            model.addAttribute("error", "Please enter your HOD ID");
+            return "hod-forgot-password";
+        }
+
+        if (email == null || email.trim().isEmpty()) {
+            model.addAttribute("error", "Please enter your registered email");
+            return "hod-forgot-password";
+        }
+
+        String cleanHodId = hodId.trim();
+        String cleanEmail = email.trim().toLowerCase();
+        HOD hod = hodManager.getHOD(cleanHodId);
+
+        if (hod == null) {
+            model.addAttribute("error", "HOD ID not found");
+            return "hod-forgot-password";
+        }
+
+        // Verify that the provided email matches the registered email
+        if (!hod.getEmail().equalsIgnoreCase(cleanEmail)) {
+            model.addAttribute("error", "Email does not match the registered email for this HOD ID");
+            return "hod-forgot-password";
+        }
+
+        // Generate OTP
+        String otp = generateOTP();
+        hodOTPs.put(cleanHodId, otp);
+        hodOTPExpiry.put(cleanHodId, System.currentTimeMillis() + (10 * 60 * 1000)); // 10 minutes
+
+        System.out.println("🔑 ===== HOD PASSWORD RESET ATTEMPT =====");
+        System.out.println("🔍 HOD: " + cleanHodId);
+        System.out.println("🔍 Email: " + cleanEmail);
+        System.out.println("🔍 OTP Generated: " + otp);
+        System.out.println("📧 Sending to: " + hod.getEmail());
+
+        // Send OTP email
+        emailService.sendOTPEmail(hod.getEmail(), hod.getName(), otp);
+
+        model.addAttribute("success", "OTP sent to your registered email: " + maskEmail(hod.getEmail()));
+        model.addAttribute("hodId", cleanHodId);
+        model.addAttribute("email", cleanEmail);
+        model.addAttribute("showResetForm", true);
+        model.addAttribute("showResendOption", true);
+
+        return "hod-forgot-password";
+    }
+
+    // ========== RESEND OTP ENDPOINT ==========
+
+    @PostMapping("/hod/resend-otp")
+    public String resendHODOTP(
+            @RequestParam String hodId,
+            @RequestParam String email,
+            Model model) {
+
+        System.out.println("🔄 HOD OTP resend requested for: " + hodId + ", email: " + email);
+
+        if (hodId == null || hodId.trim().isEmpty()) {
+            model.addAttribute("error", "HOD ID is required");
+            return "hod-forgot-password";
+        }
+
+        if (email == null || email.trim().isEmpty()) {
+            model.addAttribute("error", "Email is required");
+            return "hod-forgot-password";
+        }
+
+        String cleanHodId = hodId.trim();
+        String cleanEmail = email.trim().toLowerCase();
+        HOD hod = hodManager.getHOD(cleanHodId);
+
+        if (hod == null) {
+            model.addAttribute("error", "HOD ID not found");
+            return "hod-forgot-password";
+        }
+
+        // Verify that the provided email matches the registered email
+        if (!hod.getEmail().equalsIgnoreCase(cleanEmail)) {
+            model.addAttribute("error", "Email does not match the registered email for this HOD ID");
+            return "hod-forgot-password";
+        }
+
+        // Generate new OTP
+        String newOtp = generateOTP();
+        hodOTPs.put(cleanHodId, newOtp);
+        hodOTPExpiry.put(cleanHodId, System.currentTimeMillis() + (10 * 60 * 1000)); // 10 minutes
+
+        System.out.println("🔄 ===== HOD OTP RESEND =====");
+        System.out.println("🔍 HOD: " + cleanHodId);
+        System.out.println("🔍 New OTP Generated: " + newOtp);
+        System.out.println("📧 Sending to: " + hod.getEmail());
+
+        // Send new OTP email
+        emailService.sendOTPEmail(hod.getEmail(), hod.getName(), newOtp);
+
+        model.addAttribute("success", "New OTP sent to your registered email: " + maskEmail(hod.getEmail()));
+        model.addAttribute("hodId", cleanHodId);
+        model.addAttribute("email", cleanEmail);
+        model.addAttribute("showResetForm", true);
+        model.addAttribute("showResendOption", true);
+
+        return "hod-forgot-password";
+    }
+
+    @GetMapping("/hod/reset-password")
+    public String showHODResetPassword(@RequestParam String hodId, Model model) {
+        HOD hod = hodManager.getHOD(hodId);
+        if (hod == null) {
+            return "redirect:/hod/forgot-password?error=HOD ID not found";
+        }
+
+        model.addAttribute("hodId", hodId);
+        return "hod-reset-password";
+    }
+
+    @PostMapping("/hod/reset-password")
+    public String processHODResetPassword(
+            @RequestParam String hodId,
+            @RequestParam String otp,
+            @RequestParam String newPassword,
+            @RequestParam String confirmPassword,
+            Model model) {
+
+        System.out.println("🔑 HOD Password reset attempt for: " + hodId);
+
+        if (hodId == null || hodId.trim().isEmpty()) {
+            model.addAttribute("error", "HOD ID is required");
+            return "hod-reset-password";
+        }
+
+        String cleanHodId = hodId.trim();
+        HOD hod = hodManager.getHOD(cleanHodId);
+
+        if (hod == null) {
+            model.addAttribute("error", "HOD ID not found");
+            return "hod-reset-password";
+        }
+
+        // Validate OTP
+        if (!validateHODOTP(cleanHodId, otp)) {
+            model.addAttribute("error", "Invalid or expired OTP");
+            model.addAttribute("hodId", cleanHodId);
+            return "hod-reset-password";
+        }
+
+        // Validate passwords
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            model.addAttribute("error", "New password is required");
+            model.addAttribute("hodId", cleanHodId);
+            return "hod-reset-password";
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            model.addAttribute("error", "Passwords do not match");
+            model.addAttribute("hodId", cleanHodId);
+            return "hod-reset-password";
+        }
+
+        if (newPassword.length() < 4) {
+            model.addAttribute("error", "Password must be at least 4 characters long");
+            model.addAttribute("hodId", cleanHodId);
+            return "hod-reset-password";
+        }
+
+        // Update password
+        boolean success = hodManager.updateHOD(cleanHodId, hod.getName(), hod.getEmail(), hod.getDepartment(), newPassword.trim());
+
+        if (success) {
+            // Clear OTP after successful reset
+            hodOTPs.remove(cleanHodId);
+            hodOTPExpiry.remove(cleanHodId);
+
+            // Send success email
+            emailService.sendPasswordResetSuccessEmail(hod.getEmail(), hod.getName());
+
+            model.addAttribute("success", "Password reset successfully! You can now login with your new password.");
+            return "hod-login";
+        } else {
+            model.addAttribute("error", "Failed to reset password. Please try again.");
+            model.addAttribute("hodId", cleanHodId);
+            return "hod-reset-password";
+        }
+    }
+
+    private boolean validateHODOTP(String hodId, String otp) {
+        String storedOTP = hodOTPs.get(hodId);
+        Long expiryTime = hodOTPExpiry.get(hodId);
+
+        if (storedOTP == null || expiryTime == null) {
+            System.out.println("❌ No OTP session found for HOD: " + hodId);
+            return false;
+        }
+
+        if (System.currentTimeMillis() > expiryTime) {
+            System.out.println("❌ OTP expired for HOD: " + hodId);
+            hodOTPs.remove(hodId);
+            hodOTPExpiry.remove(hodId);
+            return false;
+        }
+
+        boolean isValid = storedOTP.equals(otp);
+        System.out.println("🔍 OTP validation for " + hodId + ": " + (isValid ? "VALID" : "INVALID"));
+        return isValid;
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || email.length() < 5) return "***";
+        int atIndex = email.indexOf('@');
+        if (atIndex < 3) return "***" + email.substring(atIndex);
+        return email.substring(0, 3) + "***" + email.substring(atIndex);
+    }
+
+    // Helper method to generate OTP
+    private String generateOTP() {
+        Random random = new Random();
+        int otp = 100000 + random.nextInt(900000);
+        return String.valueOf(otp);
     }
 
     @GetMapping("/hod/dashboard")
@@ -132,7 +375,7 @@ public class HODController {
         return "redirect:/hod/dashboard?hodId=" + hodId + "&success=Unit added successfully";
     }
 
-    // HOD MANAGEMENT
+    // HOD MANAGEMENT - UPDATED WITH EMAIL VALIDATION
     @PostMapping("/hod/add-hod")
     public String addHOD(
             @RequestParam String id,
@@ -151,13 +394,21 @@ public class HODController {
         }
 
         String cleanId = id.trim();
+        String cleanEmail = email != null ? email.trim() : "";
+
+        // NEW: Email validation if email is provided
+        if (!cleanEmail.isEmpty()) {
+            boolean isValidEmail = emailService.validateEmailExistence(cleanEmail);
+            if (!isValidEmail) {
+                return "redirect:/hod/dashboard?hodId=" + hodId + "&error=Invalid email address. Please use a valid email.";
+            }
+        }
 
         if (hodManager.getHOD(cleanId) != null) {
             return "redirect:/hod/dashboard?hodId=" + hodId + "&error=HOD ID exists";
         }
 
-        HOD newHod = new HOD(cleanId, name.trim(),
-                email != null ? email.trim() : "",
+        HOD newHod = new HOD(cleanId, name.trim(), cleanEmail,
                 department != null ? department.trim() : "",
                 password.trim());
         hodManager.addHOD(newHod);
@@ -166,7 +417,42 @@ public class HODController {
         return "redirect:/hod/dashboard?hodId=" + hodId + "&success=HOD added successfully";
     }
 
-    // LECTURER MANAGEMENT - FIXED CONSTRUCTOR ORDER
+    // NEW: EDIT HOD ENDPOINT - UPDATED WITH EMAIL VALIDATION
+    @PostMapping("/hod/edit-hod")
+    public String editHOD(
+            @RequestParam String hodId,
+            @RequestParam String name,
+            @RequestParam String email,
+            @RequestParam String department,
+            @RequestParam String password,
+            Model model) {
+
+        System.out.println("Editing HOD: " + hodId);
+
+        if (hodId == null || hodId.trim().isEmpty()) {
+            return "redirect:/hod/dashboard?hodId=" + hodId + "&error=HOD ID required";
+        }
+
+        String cleanEmail = email != null ? email.trim() : "";
+
+        // NEW: Email validation if email is provided
+        if (!cleanEmail.isEmpty()) {
+            boolean isValidEmail = emailService.validateEmailExistence(cleanEmail);
+            if (!isValidEmail) {
+                return "redirect:/hod/dashboard?hodId=" + hodId + "&error=Invalid email address. Please use a valid email.";
+            }
+        }
+
+        boolean success = hodManager.updateHOD(hodId.trim(), name, cleanEmail, department, password);
+
+        if (success) {
+            return "redirect:/hod/dashboard?hodId=" + hodId + "&success=HOD details updated successfully";
+        } else {
+            return "redirect:/hod/dashboard?hodId=" + hodId + "&error=Failed to update HOD details";
+        }
+    }
+
+    // LECTURER MANAGEMENT - UPDATED WITH EMAIL VALIDATION
     @PostMapping("/hod/lecturers")
     public String addLecturer(
             @RequestParam String lecturerId,
@@ -199,6 +485,12 @@ public class HODController {
         String cleanEmail = email != null && !email.trim().isEmpty() ? email.trim() :
                 cleanName.toLowerCase().replace(" ", ".") + "@mku.ac.ke";
 
+        // NEW: STRICT EMAIL VALIDATION
+        boolean isValidEmail = emailService.validateEmailExistence(cleanEmail);
+        if (!isValidEmail) {
+            return "redirect:/hod/dashboard?hodId=" + hodId + "&error=Invalid email address. Please use a valid email for the lecturer.";
+        }
+
         // Check if lecturer exists using HODManager
         if (hodManager.lecturerExists(upperId)) {
             return "redirect:/hod/dashboard?hodId=" + hodId + "&error=Lecturer ID already exists";
@@ -228,7 +520,7 @@ public class HODController {
         return "redirect:/hod/dashboard?hodId=" + hodId + "&success=Lecturer added successfully";
     }
 
-    // ========== NEW: STUDENTS AND ATTENDANCE MANAGEMENT ==========
+    // ========== STUDENTS AND ATTENDANCE MANAGEMENT ==========
 
     @GetMapping("/hod/students")
     public String viewStudents(

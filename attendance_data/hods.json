@@ -1,16 +1,32 @@
 {
+  "11" : {
+    "id" : "11",
+    "name" : "CYBER SECURITY",
+    "password" : "mllklkokoj",
+    "email" : "sykesalex264b@gmail.com",
+    "department" : "ICT",
+    "courses" : [ ]
+  },
+  "qq" : {
+    "id" : "qq",
+    "name" : "CYBER SECURITY",
+    "password" : "zxcvbnm",
+    "email" : "emmanuelmae264@gmail.com",
+    "department" : "Computer Science",
+    "courses" : [ ]
+  },
   "HOD001" : {
     "id" : "HOD001",
-    "name" : "Head of Department",
-    "password" : "hod001",
-    "email" : "hod@mku.ac.ke",
+    "name" : "MR ROAD MARKp",
+    "password" : "hod",
+    "email" : "emmanuelmae264@gmail.com",
     "department" : "Computer Science",
     "courses" : [ ]
   },
   "1" : {
     "id" : "1",
     "name" : "1",
-    "password" : "1",
+    "password" : "123456",
     "email" : "sykesalex264@gmail.com",
     "department" : "ICT",
     "courses" : [ ]

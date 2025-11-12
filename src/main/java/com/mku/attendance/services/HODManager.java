@@ -57,6 +57,36 @@ public class HODManager {
         System.out.println("✅ HOD added and saved to file: " + hod.getId());
     }
 
+    // NEW: Update HOD method
+    public boolean updateHOD(String hodId, String name, String email, String department, String password) {
+        HOD hod = hods.get(hodId);
+        if (hod == null) {
+            System.out.println("❌ HOD not found for update: " + hodId);
+            return false;
+        }
+
+        // Update fields (only update password if provided)
+        if (name != null && !name.trim().isEmpty()) {
+            hod.setName(name.trim());
+        }
+        if (email != null) {
+            hod.setEmail(email.trim());
+        }
+        if (department != null) {
+            hod.setDepartment(department.trim());
+        }
+        if (password != null && !password.trim().isEmpty()) {
+            hod.setPassword(password.trim());
+        }
+
+        saveHODsToFile();
+        System.out.println("✅ HOD updated successfully: " + hodId);
+        System.out.println("   Name: " + hod.getName());
+        System.out.println("   Email: " + hod.getEmail());
+        System.out.println("   Department: " + hod.getDepartment());
+        return true;
+    }
+
     public Map<String, HOD> getHODs() {
         return new HashMap<>(hods);
     }

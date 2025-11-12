@@ -2,45 +2,219 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Lecturer Login - MKU</title>
+    <title>Lecturer Login - MKU Attendance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
-        .container { max-width: 400px; margin: 100px auto; padding: 40px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #FF8C00; margin-bottom: 30px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
-        button { width: 100%; background: #FF8C00; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        button:hover { background: #e07a00; }
-        .msg { padding: 12px; margin: 15px 0; border-radius: 5px; font-weight: bold; text-align: center; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .links { text-align: center; margin-top: 20px; }
-        .links a { color: #FF8C00; text-decoration: none; }
-        .links a:hover { text-decoration: underline; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .login-header {
+            background: linear-gradient(135deg, #2C3E50, #34495E);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .form-control {
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        .form-control:focus {
+            border-color: #2C3E50;
+            box-shadow: 0 0 0 0.3rem rgba(44, 62, 80, 0.15);
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #2C3E50, #34495E);
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            color: white;
+            cursor: pointer;
+        }
+        .btn-login:hover {
+            background: linear-gradient(135deg, #34495E, #2C3E50);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(44, 62, 80, 0.3);
+        }
+        .back-link {
+            color: #6c757d;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            color: #2C3E50;
+        }
+        .input-icon {
+            position: relative;
+        }
+        .input-icon i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 3;
+        }
+        .input-icon .form-control {
+            padding-left: 45px;
+        }
+        .floating-alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Lecturer Login</h1>
-        
-        <div th:if="${error}" class="msg error" th:text="${error}"></div>
-        
-        <form th:action="@{/lecturer/login}" method="post">
-            <div class="form-group">
-                <label>Lecturer ID</label>
-                <input type="text" name="lecturerId" placeholder="Enter your lecturer ID" required>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="mb-3">
+                        <i class="fas fa-chalkboard-teacher fa-3x mb-3"></i>
+                    </div>
+                    <h2 class="mb-2 fw-bold">Lecturer Portal</h2>
+                    <p class="mb-0 opacity-90">MKU Attendance System</p>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Alert Messages -->
+                    <div th:if="${error}" class="alert alert-danger floating-alert alert-dismissible fade show" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+                            <div>
+                                <h6 class="alert-heading mb-1">Login Failed</h6>
+                                <span th:text="${error}" class="mb-0"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+
+                    <div th:if="${success}" class="alert alert-success floating-alert alert-dismissible fade show" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle me-3 fa-lg"></i>
+                            <div>
+                                <h6 class="alert-heading mb-1">Success</h6>
+                                <span th:text="${success}" class="mb-0"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form th:action="@{/lecturer/login}" method="post" id="loginForm">
+                        <div class="mb-4">
+                            <label for="lecturerId" class="form-label fw-semibold mb-3">
+                                <i class="fas fa-id-card me-2"></i>Lecturer ID
+                            </label>
+                            <div class="input-icon">
+                                <i class="fas fa-user-tie"></i>
+                                <input type="text" class="form-control" id="lecturerId" name="lecturerId"
+                                       placeholder="e.g., LEC001" required
+                                       th:value="${lecturerId}">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label fw-semibold mb-3">
+                                <i class="fas fa-lock me-2"></i>Password
+                            </label>
+                            <div class="input-icon">
+                                <i class="fas fa-key"></i>
+                                <input type="password" class="form-control" id="password" name="password"
+                                       placeholder="Enter your password" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-login w-100 mb-4 py-3">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login to Dashboard
+                        </button>
+                    </form>
+
+                    <!-- Navigation Links -->
+                    <div class="text-center">
+                        <a th:href="@{/lecturer/forgot-password}" class="back-link me-3">
+                            <i class="fas fa-key me-1"></i>Forgot Password?
+                        </a>
+                        <span class="text-muted mx-2">|</span>
+                        <a href="/" class="back-link ms-2">
+                            <i class="fas fa-home me-1"></i>Back to Home
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="Enter your password" required>
+
+            <!-- Footer -->
+            <div class="text-center mt-4">
+                <p class="text-white opacity-75 mb-2">
+                    <i class="fas fa-shield-alt me-2"></i>Secure Lecturer Access
+                </p>
+                <p class="text-white opacity-75 small">
+                    &copy; 2024 Mount Kenya University. All rights reserved.
+                </p>
             </div>
-            <button type="submit">Login</button>
-        </form>
-        
-        <div class="links">
-            <a href="/">Back to Home</a>
         </div>
     </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Form enhancement
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('loginForm');
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', function(e) {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+
+                // Show loading state
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing In...';
+                submitBtn.disabled = true;
+
+                // Auto-format lecturer ID
+                const lecturerIdInput = document.getElementById('lecturerId');
+                if (lecturerIdInput) {
+                    lecturerIdInput.value = lecturerIdInput.value.toUpperCase().trim();
+                }
+
+                // Re-enable after 3 seconds if still on same page
+                setTimeout(() => {
+                    if (submitBtn.disabled) {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                }, 3000);
+            });
+        }
+
+        // Auto-focus on lecturer ID field
+        const lecturerIdInput = document.getElementById('lecturerId');
+        if (lecturerIdInput) {
+            lecturerIdInput.focus();
+        }
+    });
+</script>
 </body>
 </html>

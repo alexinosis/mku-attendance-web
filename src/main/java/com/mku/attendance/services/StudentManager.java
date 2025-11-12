@@ -44,6 +44,8 @@ public class StudentManager {
         }
     }
 
+    // ========== CRUD OPERATIONS ==========
+
     public void addStudent(StudentData student) {
         if (student != null && student.getStudentId() != null) {
             String studentId = student.getStudentId().toUpperCase();
@@ -52,6 +54,76 @@ public class StudentManager {
             System.out.println("✅ Student added and saved: " + studentId + " - " + student.getName());
         } else {
             System.err.println("❌ Cannot add student: Student or Student ID is null");
+        }
+    }
+
+    /**
+     * UPDATE STUDENT - NEW METHOD FOR REACT FRONTEND
+     * Updates an existing student's information
+     */
+    public boolean updateStudent(StudentData updatedStudent) {
+        if (updatedStudent == null || updatedStudent.getStudentId() == null) {
+            System.err.println("❌ Cannot update student: Student or Student ID is null");
+            return false;
+        }
+
+        String studentId = updatedStudent.getStudentId().toUpperCase();
+        StudentData existingStudent = students.get(studentId);
+
+        if (existingStudent == null) {
+            System.err.println("❌ Cannot update student: Student not found - " + studentId);
+            return false;
+        }
+
+        try {
+            // Update student fields
+            existingStudent.setName(updatedStudent.getName());
+            existingStudent.setEmail(updatedStudent.getEmail());
+            existingStudent.setPasswordHash(updatedStudent.getPasswordHash());
+            existingStudent.setCourse(updatedStudent.getCourse());
+            existingStudent.setRegisteredUnits(updatedStudent.getRegisteredUnits());
+            existingStudent.setAttendanceRecords(updatedStudent.getAttendanceRecords());
+            existingStudent.setEmailVerified(updatedStudent.isEmailVerified());
+
+            // Update timestamps
+            existingStudent.setUpdatedAt(java.time.LocalDateTime.now());
+
+            // Save to file
+            saveStudentsToFile();
+            System.out.println("✅ Student updated and saved: " + studentId + " - " + updatedStudent.getName());
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error updating student " + studentId + ": " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * UPDATE STUDENT PASSWORD - NEW METHOD FOR PASSWORD RESET
+     */
+    public boolean updateStudentPassword(String studentId, String newPassword) {
+        if (studentId == null || newPassword == null) {
+            System.err.println("❌ Cannot update password: Student ID or new password is null");
+            return false;
+        }
+
+        StudentData student = students.get(studentId.toUpperCase());
+        if (student == null) {
+            System.err.println("❌ Cannot update password: Student not found - " + studentId);
+            return false;
+        }
+
+        try {
+            student.updatePassword(newPassword);
+            saveStudentsToFile();
+            System.out.println("✅ Password updated for student: " + studentId);
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error updating password for student " + studentId + ": " + e.getMessage());
+            return false;
         }
     }
 

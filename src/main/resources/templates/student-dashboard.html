@@ -18,11 +18,46 @@
         .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-        /* Tabs */
-        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .tab-nav button { padding: 12px 20px; background: #e9ecef; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s; }
-        .tab-nav button:hover { background: #dee2e6; }
-        .tab-nav button.active { background: #2E8B57; color: white; }
+        /* UPDATED TAB NAVIGATION - COLORFUL AND HIGHLY VISIBLE */
+        .tab-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+        .tab-nav button {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            min-width: 160px;
+        }
+        .tab-nav button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .tab-nav button.active {
+            background: linear-gradient(135deg, #2E8B57 0%, #247a48 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(46, 139, 87, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Individual tab colors for better distinction */
+        .tab-nav button:nth-child(1) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); } /* Course Registration */
+        .tab-nav button:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); } /* Unit Management */
+        .tab-nav button:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); } /* Mark Attendance */
+        .tab-nav button:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); } /* Attendance Summary */
 
         /* Tab Content */
         .tab { display: none; padding: 25px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -171,7 +206,7 @@
 
         @media (max-width: 768px) {
             .tab-nav { flex-direction: column; }
-            .tab-nav button { width: 100%; }
+            .tab-nav button { width: 100%; min-width: auto; }
             .attendance-item { flex-direction: column; align-items: flex-start; gap: 10px; }
             .attendance-control { align-items: flex-start; width: 100%; }
         }
@@ -196,7 +231,7 @@
         <p><strong>Registered Units:</strong> <span th:text="${student.registeredUnits != null ? student.registeredUnits.size() : 0}">0</span>/8</p>
     </div>
 
-    <!-- TAB NAVIGATION -->
+    <!-- UPDATED TAB NAVIGATION -->
     <div class="tab-nav">
         <button class="active" onclick="showTab('course-registration')">Course Registration</button>
         <button onclick="showTab('unit-management')">Unit Management</button>

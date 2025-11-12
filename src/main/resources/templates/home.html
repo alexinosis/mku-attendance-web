@@ -5,60 +5,79 @@
     <style>
         body {
             font-family: Arial;
-            margin: 0;                           /* remove 40px margin so image fits edge-to-edge */
+            margin: 0;
             padding: 0;
             background: url('/images/mku.png') no-repeat center center fixed;
-            background-size: cover;             /* resize to fill entire page */
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            color: white;
+            text-align: center;
         }
 
         .container {
             max-width: 800px;
-            margin: 40px auto;                  /* keep spacing inside instead */
-            text-align: center;
-            background: rgba(255,255,255,0.2);  /* optional: slight fade so text is readable */
-            padding: 20px;
-            border-radius: 10px;
+            margin: 60px auto;
         }
 
-        h1 {
-            color: #2c3e50;
+        .university-name {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        }
+
+        .university-motto {
+            font-size: 18px;
+            font-style: italic;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.5);
+        }
+
+        .system-title {
             margin-bottom: 40px;
-            background: rgba(255,255,255,0.6);  /* keeps title readable */
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.5);
         }
 
         .btn {
             display: block;
             width: 300px;
-            margin: 15px auto;
-            padding: 15px;
+            margin: 20px auto;
+            padding: 18px;
             text-decoration: none;
-            color: black;
+            color: white;
             font-weight: bold;
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
-        .btn-student-signin { background: #228B22; }
-        .btn-student-login { background: #1E90FF; }
-        .btn-hod-login { background: #FF8C00; }
-        .btn-lecturer-login { background: #9400D3; }
-        .btn-exit { background: #B22222; }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-student-signin { background: linear-gradient(135deg, #228B22, #32CD32); }
+        .btn-student-login { background: linear-gradient(135deg, #1E90FF, #00BFFF); }
+        .btn-hod-login { background: linear-gradient(135deg, #FF8C00, #FFA500); }
+        .btn-lecturer-login { background: linear-gradient(135deg, #9400D3, #BA55D3); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>University Attendance System<br>MOUNT KENYA UNIVERSITY</h1>
+    <div class="university-name">MOUNT KENYA UNIVERSITY</div>
+    <div class="university-motto">Unlocking Possibilities</div>
+    <div class="system-title">Attendance Management System</div>
 
     <a href="/student/register" class="btn btn-student-signin">Student Sign In</a>
     <a href="/student/login" class="btn btn-student-login">Student Login</a>
     <a href="/hod/login" class="btn btn-hod-login">HOD Login</a>
     <a href="/lecturer/login" class="btn btn-lecturer-login">Lecturer Login</a>
-    <a href="#" class="btn btn-exit">Exit</a>
 </div>
 
 </body>

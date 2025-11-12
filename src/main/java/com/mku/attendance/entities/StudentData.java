@@ -1,67 +1,138 @@
 package com.mku.attendance.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class StudentData {
-    private String studentId;
-    private String firstName;
-    private String lastName;
+    private String id; // UUID from database
+    private String studentId; // Student ID
+    private String name; // Full name (matches React frontend)
     private String email;
-    private String course; // Changed to track registered course
-    private Set<String> registeredUnits; // Track registered units
-    private String password;
-    private Map<String, List<AttendanceRecord>> attendanceRecords; // Unit code -> attendance records
+    private String passwordHash; // Matches database column name
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    public StudentData(String studentId, String firstName, String lastName,
-                       String email, String course, String unit, String password) {
+    // Legacy fields for backward compatibility
+    private String course;
+    private Set<String> registeredUnits;
+    private Map<String, List<AttendanceRecord>> attendanceRecords;
+    private boolean emailVerified = false;
+
+    // Constructor for React frontend compatibility
+    public StudentData(String studentId, String name, String email, String passwordHash) {
+        this.id = UUID.randomUUID().toString();
         this.studentId = studentId;
-        this.firstName = firstName;
-        this.lastName = lastName;
+        this.name = name;
         this.email = email;
-        this.course = course;
-        this.password = password;
-        this.registeredUnits = new HashSet<>();
-        this.attendanceRecords = new HashMap<>();
+        this.passwordHash = passwordHash;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
 
-        // Add initial unit if provided
-        if (unit != null && !unit.trim().isEmpty()) {
-            this.registeredUnits.add(unit.trim().toUpperCase());
-        }
-    }
-
-    // Default constructor for JSON
-    public StudentData() {
-        this.studentId = "";
-        this.firstName = "";
-        this.lastName = "";
-        this.email = "";
+        // Initialize legacy fields
         this.course = "";
-        this.password = "";
         this.registeredUnits = new HashSet<>();
         this.attendanceRecords = new HashMap<>();
+        this.emailVerified = false;
     }
 
-    // Getters
-    public String getStudentId() { return studentId; }
-    public String getFirstName() { return firstName; }
-    public String getLastName() { return lastName; }
-    public String getName() {
-        if ((firstName == null || firstName.isEmpty()) && (lastName == null || lastName.isEmpty())) {
-            return "Unknown Student";
-        }
-        return (firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "");
+    // Constructor for database mapping
+    public StudentData(String id, String studentId, String name, String email,
+                       String passwordHash, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.studentId = studentId;
+        this.name = name;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+
+        // Initialize legacy fields
+        this.course = "";
+        this.registeredUnits = new HashSet<>();
+        this.attendanceRecords = new HashMap<>();
+        this.emailVerified = false;
     }
+
+    public StudentData() {
+        this.id = UUID.randomUUID().toString();
+        this.studentId = "";
+        this.name = "";
+        this.email = "";
+        this.passwordHash = "";
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.course = "";
+        this.registeredUnits = new HashSet<>();
+        this.attendanceRecords = new HashMap<>();
+        this.emailVerified = false;
+    }
+
+    // Getters and Setters for new fields
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id != null ? id : UUID.randomUUID().toString(); }
+
+    public String getStudentId() { return studentId; }
+    public void setStudentId(String studentId) { this.studentId = studentId != null ? studentId : ""; }
+
+    public String getName() {
+        if (name != null && !name.trim().isEmpty()) {
+            return name;
+        }
+        // Fallback to legacy firstName/lastName for backward compatibility
+        return "Unknown Student";
+    }
+    public void setName(String name) { this.name = name != null ? name : ""; }
+
     public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email != null ? email : ""; }
+
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash != null ? passwordHash : ""; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt != null ? createdAt : LocalDateTime.now(); }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt != null ? updatedAt : LocalDateTime.now(); }
+
+    // Legacy getters for backward compatibility
+    public String getFirstName() {
+        if (name != null && name.contains(" ")) {
+            return name.split(" ")[0];
+        }
+        return name != null ? name : "";
+    }
+
+    public String getLastName() {
+        if (name != null && name.contains(" ")) {
+            String[] parts = name.split(" ");
+            return parts.length > 1 ? parts[parts.length - 1] : "";
+        }
+        return "";
+    }
+
     public String getCourse() { return course; }
-    public String getPassword() { return password; }
+    public void setCourse(String course) { this.course = course != null ? course : ""; }
+
+    public String getPassword() { return passwordHash; } // Legacy compatibility
+    public void setPassword(String password) { this.passwordHash = password != null ? password : ""; } // Legacy compatibility
+
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+
     public Set<String> getRegisteredUnits() {
         if (registeredUnits == null) {
             registeredUnits = new HashSet<>();
         }
         return registeredUnits;
     }
+
+    public void setRegisteredUnits(Set<String> registeredUnits) {
+        this.registeredUnits = registeredUnits != null ? registeredUnits : new HashSet<>();
+    }
+
     public Map<String, List<AttendanceRecord>> getAttendanceRecords() {
         if (attendanceRecords == null) {
             attendanceRecords = new HashMap<>();
@@ -69,40 +140,32 @@ public class StudentData {
         return attendanceRecords;
     }
 
-    // Proper Setters for JSON deserialization
-    public void setStudentId(String studentId) {
-        this.studentId = studentId != null ? studentId : "";
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName != null ? firstName : "";
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName != null ? lastName : "";
-    }
-
-    public void setEmail(String email) {
-        this.email = email != null ? email : "";
-    }
-
-    public void setCourse(String course) {
-        this.course = course != null ? course : "";
-    }
-
-    public void setPassword(String password) {
-        this.password = password != null ? password : "";
-    }
-
-    public void setRegisteredUnits(Set<String> registeredUnits) {
-        this.registeredUnits = registeredUnits != null ? registeredUnits : new HashSet<>();
-    }
-
     public void setAttendanceRecords(Map<String, List<AttendanceRecord>> attendanceRecords) {
         this.attendanceRecords = attendanceRecords != null ? attendanceRecords : new HashMap<>();
     }
 
-    // Business methods
+    // Business methods - Updated for React frontend compatibility
+    public boolean hasValidEmail() {
+        return email != null && !email.trim().isEmpty() &&
+                email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
+    }
+
+    // Method to validate student data for React frontend
+    public boolean isValidForRegistration() {
+        return studentId != null && !studentId.trim().isEmpty() &&
+                name != null && !name.trim().isEmpty() &&
+                email != null && !email.trim().isEmpty() &&
+                passwordHash != null && !passwordHash.trim().isEmpty() &&
+                hasValidEmail();
+    }
+
+    // Method to update password (for password reset)
+    public void updatePassword(String newPassword) {
+        this.passwordHash = newPassword;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // Legacy business methods (for backward compatibility)
     public boolean registerCourse(String courseCode) {
         if (courseCode == null || courseCode.trim().isEmpty()) {
             return false;
@@ -111,7 +174,7 @@ public class StudentData {
             this.course = courseCode.trim().toUpperCase();
             return true;
         }
-        return false; // Already registered for a course
+        return false;
     }
 
     public boolean registerUnit(String unitCode) {
@@ -121,14 +184,14 @@ public class StudentData {
         if (registeredUnits == null) {
             registeredUnits = new HashSet<>();
         }
-        if (registeredUnits.size() < 8) { // Maximum 8 units
+        if (registeredUnits.size() < 8) {
             String normalizedUnitCode = unitCode.trim().toUpperCase();
             boolean added = registeredUnits.add(normalizedUnitCode);
             System.out.println("Registering unit " + normalizedUnitCode + " for student " + studentId + ": " + (added ? "SUCCESS" : "ALREADY_EXISTS"));
             return added;
         }
         System.out.println("Cannot register unit " + unitCode + " for student " + studentId + ": MAX_UNITS_REACHED");
-        return false; // Maximum units reached
+        return false;
     }
 
     public boolean removeUnit(String unitCode) {
@@ -152,7 +215,6 @@ public class StudentData {
         System.out.println("Added attendance record for student " + studentId + " in unit " + normalizedUnitCode + ": " + record);
     }
 
-    // Add attendance record with auto-creation
     public void markAttendance(String unitCode, boolean present) {
         if (unitCode == null) {
             return;
@@ -161,7 +223,6 @@ public class StudentData {
         addAttendanceRecord(unitCode, record);
     }
 
-    // Check if student is registered for a specific unit
     public boolean isRegisteredForUnit(String unitCode) {
         if (unitCode == null || registeredUnits == null) {
             return false;
@@ -169,16 +230,8 @@ public class StudentData {
         return registeredUnits.contains(unitCode.toUpperCase());
     }
 
-    // Get attendance records for specific unit with null safety
-    public List<AttendanceRecord> getAttendanceRecordsForUnit(String unitCode) {
-        if (unitCode == null || attendanceRecords == null) {
-            return new ArrayList<>();
-        }
-        List<AttendanceRecord> records = attendanceRecords.get(unitCode.toUpperCase());
-        return records != null ? records : new ArrayList<>();
-    }
+    // ========== ATTENDANCE CALCULATION METHODS ==========
 
-    // Attendance statistics with null safety
     public int getTotalSessions(String unitCode) {
         if (unitCode == null) return 0;
         List<AttendanceRecord> records = getAttendanceRecordsForUnit(unitCode);
@@ -193,6 +246,7 @@ public class StudentData {
                 .count();
     }
 
+    // MISSING METHOD: Added back
     public int getAbsentCount(String unitCode) {
         if (unitCode == null) return 0;
         List<AttendanceRecord> records = getAttendanceRecordsForUnit(unitCode);
@@ -205,17 +259,16 @@ public class StudentData {
         int total = getTotalSessions(unitCode);
         if (total == 0) return 0.0;
         int present = getPresentCount(unitCode);
-        return Math.round((present * 100.0) / total * 10.0) / 10.0; // Round to 1 decimal place
+        return Math.round((present * 100.0) / total * 10.0) / 10.0;
     }
 
-    // Get today's attendance status for a unit
+    // MISSING METHOD: Added back
     public String getTodaysAttendanceStatus(String unitCode) {
         if (unitCode == null) return "NOT_MARKED";
 
         List<AttendanceRecord> records = getAttendanceRecordsForUnit(unitCode);
         if (records.isEmpty()) return "NOT_MARKED";
 
-        // Get today's date string (YYYY-MM-DD format)
         String today = java.time.LocalDate.now().toString();
 
         for (AttendanceRecord record : records) {
@@ -227,14 +280,13 @@ public class StudentData {
         return "NOT_MARKED";
     }
 
-    // Get last attendance date for a unit
+    // MISSING METHOD: Added back
     public String getLastAttendanceDate(String unitCode) {
         if (unitCode == null) return null;
 
         List<AttendanceRecord> records = getAttendanceRecordsForUnit(unitCode);
         if (records.isEmpty()) return null;
 
-        // Sort by date descending and get the latest
         return records.stream()
                 .filter(record -> record != null && record.getDate() != null)
                 .max(Comparator.comparing(AttendanceRecord::getDate))
@@ -242,14 +294,13 @@ public class StudentData {
                 .orElse(null);
     }
 
-    // Get last attendance time for a unit
+    // MISSING METHOD: Added back
     public String getLastAttendanceTime(String unitCode) {
         if (unitCode == null) return null;
 
         List<AttendanceRecord> records = getAttendanceRecordsForUnit(unitCode);
         if (records.isEmpty()) return null;
 
-        // Sort by timestamp descending and get the latest
         return records.stream()
                 .filter(record -> record != null && record.getTimestamp() != null)
                 .max(Comparator.comparing(AttendanceRecord::getTimestamp))
@@ -257,9 +308,7 @@ public class StudentData {
                 .orElse(null);
     }
 
-    // ========== ADD THESE MISSING HELPER METHODS ==========
-
-    // Helper method for template - count units with attendance records
+    // MISSING METHOD: Added back
     public int getUnitsWithAttendanceCount() {
         if (registeredUnits == null) return 0;
         return (int) registeredUnits.stream()
@@ -267,7 +316,7 @@ public class StudentData {
                 .count();
     }
 
-    // Helper method for template - count units with good attendance (>=75%)
+    // MISSING METHOD: Added back
     public int getUnitsWithGoodAttendanceCount() {
         if (registeredUnits == null) return 0;
         return (int) registeredUnits.stream()
@@ -275,7 +324,7 @@ public class StudentData {
                 .count();
     }
 
-    // Helper method for template - count units needing improvement (<75%)
+    // MISSING METHOD: Added back
     public int getUnitsNeedingImprovementCount() {
         if (registeredUnits == null) return 0;
         return (int) registeredUnits.stream()
@@ -283,7 +332,7 @@ public class StudentData {
                 .count();
     }
 
-    // Additional helper method for overall attendance percentage
+    // MISSING METHOD: Added back
     public double getOverallAttendancePercentage() {
         if (registeredUnits == null || registeredUnits.isEmpty()) return 0.0;
 
@@ -301,14 +350,14 @@ public class StudentData {
         return unitsWithAttendance > 0 ? Math.round(totalPercentage / unitsWithAttendance * 10.0) / 10.0 : 0.0;
     }
 
-    // Helper method to check if student has any attendance records
+    // MISSING METHOD: Added back
     public boolean hasAnyAttendanceRecords() {
         if (registeredUnits == null) return false;
         return registeredUnits.stream()
                 .anyMatch(unitCode -> getTotalSessions(unitCode) > 0);
     }
 
-    // Helper method to get total sessions across all units
+    // MISSING METHOD: Added back
     public int getTotalSessionsAcrossAllUnits() {
         if (registeredUnits == null) return 0;
         return registeredUnits.stream()
@@ -316,7 +365,7 @@ public class StudentData {
                 .sum();
     }
 
-    // Helper method to get total present sessions across all units
+    // MISSING METHOD: Added back
     public int getTotalPresentSessionsAcrossAllUnits() {
         if (registeredUnits == null) return 0;
         return registeredUnits.stream()
@@ -324,23 +373,40 @@ public class StudentData {
                 .sum();
     }
 
+    private List<AttendanceRecord> getAttendanceRecordsForUnit(String unitCode) {
+        if (unitCode == null || attendanceRecords == null) {
+            return new ArrayList<>();
+        }
+        List<AttendanceRecord> records = attendanceRecords.get(unitCode.toUpperCase());
+        return records != null ? records : new ArrayList<>();
+    }
+
     @Override
     public String toString() {
         return "StudentData{" +
-                "studentId='" + studentId + '\'' +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", course='" + course + '\'' +
-                ", registeredUnits=" + (registeredUnits != null ? registeredUnits : "null") +
-                ", registeredUnitsCount=" + (registeredUnits != null ? registeredUnits.size() : 0) +
+                "id='" + id + '\'' +
+                ", studentId='" + studentId + '\'' +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
                 '}';
     }
 
-    // Helper method to get student info for debugging
     public String getDebugInfo() {
-        return String.format("Student[ID=%s, Name=%s, Course=%s, Units=%s, UnitsCount=%d]",
-                studentId, getName(), course,
-                registeredUnits != null ? registeredUnits : "null",
-                registeredUnits != null ? registeredUnits.size() : 0);
+        return String.format("Student[ID=%s, StudentID=%s, Name=%s, Email=%s, Created=%s]",
+                id, studentId, name, email, createdAt);
+    }
+
+    // Method to convert to Map for JSON response (React frontend compatibility)
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", id);
+        map.put("student_id", studentId);
+        map.put("name", name);
+        map.put("email", email);
+        map.put("created_at", createdAt.toString());
+        map.put("updated_at", updatedAt.toString());
+        return map;
     }
 }
